@@ -282,9 +282,3 @@ Contributions are welcome! Please open an issue or submit a pull request on GitH
 ## Repository
 
 [GitHub Repository](https://github.com/BiliqisO/zk-implementations/tree/main/polynomial-functions)
-
-```
-
-This `README.md` file provides an overview of the library, its features, usage instructions, example code, documentation for the main structs and methods, trait implementations, tests, license information, and contribution guidelines.
-This `README.md` file provides an overview of the library, its features, usage instructions, example code, documentation for the main structs and methods, trait implementations, tests, license information, and contribution guidelines.
-```
