@@ -6,10 +6,10 @@ description = "A Rust library for polynomial operations, including addition, mul
 license = "MIT"
 repository = "https://github.com/BiliqisO/zk-implementations/tree/main/polynomial-functions"
 keywords = ["polynomial", "interpolation", "lagrange-interpolation", "univariate-polynomial", "polynomial-addition","polynomial-evaluation"] 
+exclude = ["target/*"]
 
 [lib]
 name = "polynomials"
 path = "src/lib.rs" 
 
-[package]
-exclude = ["target/*"]
+
