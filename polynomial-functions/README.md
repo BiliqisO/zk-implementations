@@ -56,25 +56,9 @@ Represents a single term in a polynomial, consisting of an exponent and a coeffi
 
 #### Methods
 
--
+- new(exponent: u32, coefficients: f32) -> Monomial: Creates a new Monomial with the given exponent and coefficient.
 
-new(exponent: u32, coefficients: f32) -> Monomial
-
-: Creates a new
-
-Monomial
-
-with the given exponent and coefficient.
-
--
-
-default() -> Monomial
-
-: Creates a default
-
-Monomial
-
-with an exponent of 0 and a coefficient of 0.0.
+- default() -> Monomial: Creates a default Monomial with an exponent of 0 and a coefficient of 0.0.
 
 ### UnivariatePolynomial
 
@@ -82,47 +66,17 @@ Represents a polynomial, which is a sum of monomials.
 
 #### Methods
 
--
+- new(monomials: Vec<Monomial>) -> UnivariatePolynomial: Creates a new UnivariatePolynomial with the given monomials.
 
-new(monomials: Vec<Monomial>) -> UnivariatePolynomial
+- default() -> UnivariatePolynomial: Creates a default
 
-: Creates a new
+UnivariatePolynomial with no monomials and no degree.
 
-UnivariatePolynomial
+- evaluate(&self, x: f32) -> f32: Evaluates the polynomial at a given value of x.
 
-with the given monomials.
+- degree(&mut self) -> Option<u32>: Returns the degree of the polynomial, if known.
 
--
-
-default() -> UnivariatePolynomial
-
-: Creates a default
-
-UnivariatePolynomial
-
-with no monomials and no degree.
-
--
-
-evaluate(&self, x: f32) -> f32
-
-: Evaluates the polynomial at a given value of
-
-x
-
-.
-
--
-
-degree(&mut self) -> Option<u32>
-
-: Returns the degree of the polynomial, if known.
-
--
-
-interpolate(x: Vec<f32>, y: Vec<f32>) -> UnivariatePolynomial
-
-: Performs Lagrange interpolation to find a polynomial that passes through the given points.
+- interpolate(x: Vec<f32>, y: Vec<f32>) -> UnivariatePolynomial: Performs Lagrange interpolation to find a polynomial that passes through the given points.
 
 ### Trait Implementations
 
@@ -206,15 +160,7 @@ impl Add for UnivariatePolynomial {
 
 ### Evaluate Method
 
-Tests the
-
-evaluate
-
-method of the
-
-UnivariatePolynomial
-
-struct.
+Tests the evaluate method of the UnivariatePolynomial struct.
 
 ```rust
 #[cfg(test)]
@@ -240,15 +186,7 @@ mod tests {
 
 ### Degree Method
 
-Tests the
-
-degree
-
-method of the
-
-UnivariatePolynomial
-
-struct.
+Tests the degree method of the UnivariatePolynomial struct.
 
 ```rust
 #[cfg(test)]
