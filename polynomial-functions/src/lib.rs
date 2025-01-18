@@ -1,46 +1,86 @@
-use core::num;
-use std::result;
 use std::ops::{Add, Mul};
 
+/// Represents a single term in a polynomial, consisting of an exponent and a coefficient.
 #[derive(Debug, Clone, Copy)]
-struct Monomial {
-    exponent: u32,
-    coefficients: f32,
+pub struct Monomial {
+    /// The exponent of the monomial.
+   pub exponent: u32,
+    /// The coefficient of the monomial.
+   pub coefficients: f32,
 }
 impl Monomial {
-    fn new(exponent: u32, coefficients: f32) -> Monomial {
+    /// Creates a new `Monomial` with the given exponent and coefficient.
+    ///
+    /// # Arguments
+    ///
+    /// * `exponent` - The exponent of the monomial.
+    /// * `coefficients` - The coefficient of the monomial.
+    ///
+    /// # Returns
+    ///
+    /// A new `Monomial` instance.
+    pub fn new(exponent: u32, coefficients: f32) -> Monomial {
         Monomial {
             exponent,
             coefficients,
         }
     }
-    fn default() -> Monomial {
+    /// Creates a default `Monomial` with an exponent of 0 and a coefficient of 0.0.
+    ///
+    /// # Returns
+    ///
+    /// A default `Monomial` instance.
+    pub fn default() -> Monomial {
         Monomial {
             exponent: 0,
             coefficients: 0.0,
         }
     }
 }
+/// Represents a polynomial, which is a sum of monomials.
 #[derive(Debug, Clone)]
-struct Polynomial {
+pub struct UnivariatePolynomial {
+    /// The list of monomials that make up the polynomial.
     monomials: Vec<Monomial>,
-    degree: Option<u32>,
+    /// The degree of the polynomial, if known.
+    pub degree: Option<u32>,
 }
+impl UnivariatePolynomial {
+    /// Adds a monomial to the polynomial. If a monomial with the same exponent already exists,
+    /// their coefficients are combined.
+    ///
+    /// # Arguments
+    ///
+    /// * `exponent` - The exponent of the monomial to add.
+    /// * `coefficients` - The coefficient of the monomial to add.
 
-impl Polynomial {
-    fn new(monomials: Vec<Monomial>) -> Polynomial {
-        Polynomial {
+    pub fn new(monomials: Vec<Monomial>) -> UnivariatePolynomial {
+        UnivariatePolynomial {
             monomials,
             degree: None,
         }
     }
-    fn default() -> Polynomial {
-        Polynomial {
+    /// Creates a default `Polynomial` with no monomials and no degree.
+    ///
+    /// # Returns
+    ///
+    /// A default `Polynomial` instance.
+   pub fn default() -> UnivariatePolynomial {
+        UnivariatePolynomial {
             monomials: Vec::new(),
             degree: None,
         }
     }
-    fn evaluate(&self, x: f32) -> f32 {
+    /// Evaluates the polynomial at a given value of `x`.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The value at which to evaluate the polynomial.
+    ///
+    /// # Returns
+    ///
+    /// The result of evaluating the polynomial at `x`.
+   pub  fn evaluate(&self, x: f32) -> f32 {
         let mut result: f32 = 0.0;
         let n = self.monomials.len();
         for i in 0..n {
@@ -48,7 +88,13 @@ impl Polynomial {
         }
         return result;
     }
-    fn degree(&mut self) -> Option<u32> {
+
+    /// Returns the degree of the polynomial.
+    ///
+    /// # Returns
+    ///
+    /// The degree of the polynomial, if known.
+   pub fn degree(&mut self) -> Option<u32> {
         let n = self.monomials.len();
         if self.degree.is_none() {
             for i in 0..n {
@@ -61,52 +107,66 @@ impl Polynomial {
             return self.degree;
         }
     }
+    /// Performs Lagrange interpolation to find a polynomial that passes through the given points.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - A vector of x-coordinates of the points.
+    /// * `y` - A vector of y-coordinates of the points.
+    ///
+    /// # Returns
+    ///
+    /// A `UnivariatePolynomial` that passes through the given points.
+    pub fn interpolate(x: Vec<f32>, y: Vec<f32>) -> UnivariatePolynomial {
+        let n = x.len();
+        let mut result = UnivariatePolynomial::default();
 
-   
+        for i in 0..n {
+            let mut denominator: f32 = 1.0;
 
-fn interpolate(x: Vec<f32>, y: Vec<f32>) -> Polynomial {
-    let n = x.len();
-    let mut result = Polynomial::default();
+            let mut numerator = UnivariatePolynomial::new(vec![Monomial::new(0, 1.0)]);
 
-    for i in 0..n {
-        let mut denominator: f32 = 1.0;
+            let mut a = y[i];
+            for j in 0..n {
+                if i != j {
+                    let x_n = Monomial::new(1, 1.0); // x
+                    let x_j = Monomial::new(0, -x[j]);
+                    let temp_poly = UnivariatePolynomial::new(vec![x_n, x_j]);
 
-        let mut numerator = Polynomial::new(vec![Monomial::new(0, 1.0)]);
+                    numerator = numerator * temp_poly;
 
-        let mut a = y[i];
-        for j in 0..n {
-            if i != j {
-                let x_n = Monomial::new(1, 1.0); // x
-                let x_j = Monomial::new(0, -x[j]);
-                let temp_poly = Polynomial::new(vec![x_n, x_j]);
-
-                numerator = numerator * temp_poly;
-
-                denominator *= x[i] - x[j];
+                    denominator *= x[i] - x[j];
+                }
             }
+
+            a /= denominator;
+
+            for monomial in &mut numerator.monomials {
+                monomial.coefficients *= a;
+            }
+
+            result = result + numerator;
         }
 
-        a /= denominator;
-
-        for monomial in &mut numerator.monomials {
-            monomial.coefficients *= a;
-        }
-
-        result = result + numerator;
+        result
     }
-
-    result
 }
 
-   
-}
+impl Mul for UnivariatePolynomial {
+    type Output = UnivariatePolynomial;
+    /// Multiplies two polynomials and returns the result.
+    ///
+    /// # Arguments
+    ///
+    /// * `p2` - The polynomial to multiply by.
+    ///
+    /// # Returns
+    ///
+    /// A new `Polynomial` representing the product of the two polynomials.
 
-impl Mul for Polynomial {
-    type Output = Polynomial;
-
-    fn mul(self, p2:Polynomial) -> Self {
+    fn mul(self, p2: UnivariatePolynomial) -> Self {
         let p1: Vec<Monomial> = self.monomials;
-          let  p2: Vec<Monomial> = p2.monomials;
+        let p2: Vec<Monomial> = p2.monomials;
 
         let mut polynomial: Vec<Monomial> = Vec::new();
         for i in 0..p1.len() {
@@ -117,7 +177,8 @@ impl Mul for Polynomial {
                 });
             }
         }
-       
+        // Combine monomials with the same exponent
+
         for i in 0..polynomial.len() {
             let mut j = i + 1;
             while j < polynomial.len() {
@@ -129,21 +190,31 @@ impl Mul for Polynomial {
                 }
             }
         }
-        Polynomial {
+        UnivariatePolynomial {
             monomials: polynomial,
             degree: None,
         }
     }
 }
 
-impl Add for Polynomial {
-    type Output = Polynomial;
+impl Add for UnivariatePolynomial {
+    type Output = UnivariatePolynomial;
+    /// Adds two polynomials and returns the result.
+    ///
+    /// # Arguments
+    ///
+    /// * `p2` - The polynomial to add.
+    ///
+    /// # Returns
+    ///
+    /// A new `Polynomial` representing the sum of the two polynomials.
 
-     fn add(self,  p2: Polynomial) -> Self {
+    fn add(self, p2: UnivariatePolynomial) -> Self {
         let p1: Vec<Monomial> = self.monomials;
-        let  p2: Vec<Monomial> = p2.monomials;
+        let p2: Vec<Monomial> = p2.monomials;
         let mut polynomial: Vec<Monomial> = Vec::new();
         polynomial = [p1, p2].concat();
+        // Combine monomials with the same exponent
 
         for i in 0..polynomial.len() {
             let mut j = i + 1;
@@ -156,7 +227,7 @@ impl Add for Polynomial {
                 }
             }
         }
-        Polynomial {
+        UnivariatePolynomial {
             monomials: polynomial,
             degree: None,
         }
@@ -168,13 +239,14 @@ mod tests {
     use super::*;
 
     #[test]
+    /// Tests the `evaluate` method of the `Polynomial` struct.
     fn test_evaluate() {
-        let default = Polynomial::default();
+        let default = UnivariatePolynomial::default();
         let m1 = Monomial::new(2, 3.0);
         let m2 = Monomial::new(1, 2.0);
         let m3 = Monomial::new(0, 5.0);
 
-        let p = Polynomial {
+        let p = UnivariatePolynomial {
             monomials: vec![m1, m2, m3],
             ..default
         };
@@ -182,13 +254,15 @@ mod tests {
         assert_eq!(result, 61.0);
     }
 
+    /// Tests the `degree` method of the `UnivariatePolynomial` struct.
+
     #[test]
     fn test_degree() {
-        let default = Polynomial::default();
+        let default = UnivariatePolynomial::default();
         let m1 = Monomial::new(2, 3.0);
         let m2 = Monomial::new(1, 2.0);
 
-        let mut p = Polynomial {
+        let mut p = UnivariatePolynomial {
             monomials: vec![m1, m2],
             ..default
         };
@@ -196,20 +270,22 @@ mod tests {
         assert_eq!(result, Some(2));
     }
 
+    /// Tests the multiplication of two UnivariatePolynomials.
+
     #[test]
     fn test_multiplication() {
-        let default = Polynomial::default();
+        let default = UnivariatePolynomial::default();
         let m1 = Monomial::new(3, 4.0);
         let m2 = Monomial::new(2, 3.0);
         let m5 = Monomial::new(1, 3.0);
         let m3 = Monomial::new(2, 5.0);
         let m4 = Monomial::new(1, 7.0);
 
-        let mut p1 = Polynomial {
+        let  p1 = UnivariatePolynomial {
             monomials: vec![m1, m2, m5],
             ..default
         };
-        let mut p2 = Polynomial {
+        let  p2 = UnivariatePolynomial {
             monomials: vec![m3, m4],
             ..default
         };
@@ -218,19 +294,19 @@ mod tests {
         assert_eq!(result.monomials[1].coefficients, 43.0);
         assert_eq!(result.monomials[2].coefficients, 36.0);
         assert_eq!(result.monomials[3].coefficients, 21.0);
-        // assert_eq!(result[0].exponent, 6);
-        // assert_eq!(result[1].exponent, 4);
-        // assert_eq!(result[2].exponent, 5);
-        // assert_eq!(result[3].exponent, 3);
+        assert_eq!(result.monomials[0].exponent, 5);
+        assert_eq!(result.monomials[1].exponent, 4);
+        assert_eq!(result.monomials[2].exponent, 3);
+        assert_eq!(result.monomials[3].exponent, 2);
     }
+
+    /// Tests the Lagrange interpolation method.
     #[test]
     fn test_interpolate() {
-        let default = Polynomial::default();
         let x = vec![1.0, 2.0, 3.0];
         let y = vec![1.0, 4.0, 9.0];
-        let result = Polynomial::interpolate(x, y);
+        let result = UnivariatePolynomial::interpolate(x, y);
         assert_eq!(result.monomials[0].coefficients, 1.0);
         assert_eq!(result.monomials[0].exponent, 2);
-    
     }
 }

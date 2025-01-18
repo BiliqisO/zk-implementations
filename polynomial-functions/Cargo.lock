@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "polynomial-functions"
+name = "polynomial"
 version = "0.1.0"

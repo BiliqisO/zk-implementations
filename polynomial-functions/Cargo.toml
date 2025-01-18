@@ -1,6 +1,12 @@
 [package]
-name = "polynomial-functions"
+name = "polynomial"
 version = "0.1.0"
 edition = "2021"
+description = "A Rust library for polynomial operations, including addition, multiplication, evaluation, and Lagrange interpolation for univariate polynomials."
+license = "MIT"
+repository = "https://github.com/BiliqisO/zk-implementations/tree/main/polynomial-functions"
+keywords = ["polynomial", "interpolation", "lagrange-interpolation", "univariate-polynomial", "polynomial-addition","polynomial-evaluation"] 
 
-[dependencies]
+[lib]
+name = "polynomials"
+path = "src/lib.rs" 
