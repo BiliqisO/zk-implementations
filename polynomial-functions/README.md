@@ -1,4 +1,3 @@
-````markdown
 # Polynomial Functions
 
 A Rust library for polynomial operations, including addition, multiplication, evaluation, and Lagrange interpolation for univariate polynomials.
@@ -18,7 +17,6 @@ Add the following to your `Cargo.toml`:
 [dependencies]
 polynomial-functions = "0.1.0"
 ```
-````
 
 ## Example
 
