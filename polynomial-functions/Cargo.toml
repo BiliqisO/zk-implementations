@@ -5,7 +5,7 @@ edition = "2021"
 description = "A Rust library for polynomial operations, including addition, multiplication, evaluation, and Lagrange interpolation for univariate polynomials."
 license = "MIT"
 repository = "https://github.com/BiliqisO/zk-implementations/tree/main/polynomial-functions"
-keywords = ["interpolation", "lagrange-interpolation", "univariate-polynomial", "poly-addition","poly-evaluation"] 
+keywords = ["interpolation", "lagrange-interpolate", "univariate-polynomial", "poly-addition","poly-evaluation"] 
 exclude = ["target/*"]
 
 [lib]
