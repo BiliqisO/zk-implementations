@@ -10,3 +10,6 @@ keywords = ["polynomial", "interpolation", "lagrange-interpolation", "univariate
 [lib]
 name = "polynomials"
 path = "src/lib.rs" 
+
+[package]
+exclude = ["target/*"]
