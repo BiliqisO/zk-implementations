@@ -15,7 +15,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-polynomial-functions = "0.1.0"
+ zkpolynomial = "0.1.0"
 ```
 
 ## Example
@@ -23,7 +23,7 @@ polynomial-functions = "0.1.0"
 Here's an example of how to use the library:
 
 ```rust
-use polynomial_functions::{Monomial, UnivariatePolynomial};
+use polynomials::{Monomial, UnivariatePolynomial};
 
 fn main() {
     // Create some monomials
