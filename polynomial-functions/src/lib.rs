@@ -83,7 +83,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     /// # Returns
     ///
     /// The result of evaluating the polynomial at `x`.
-    pub fn evaluate(&self, x: i64) -> F {
+    pub fn evaluate(&self, x: F) -> F {
         let mut result: F = F::zero();
         let n = self.monomials.len();
         for i in 0..n {
@@ -260,7 +260,7 @@ mod tests {
             monomials: vec![m1, m2, m3],
             ..default
         };
-        let result = p.evaluate(4);
+        let result = p.evaluate(Fq::from(4));
         assert_eq!(result, Fq::from(61u32));
     }
 
