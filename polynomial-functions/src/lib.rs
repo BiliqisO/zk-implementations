@@ -1,3 +1,5 @@
+use ark_ff::PrimeField;
+
 use core::num;
 use std::ops::{Add, Mul};
 fn modulo(a: i32, n: i32) -> i32 {
@@ -21,13 +23,13 @@ fn mod_inverse(b: i64, p: i64) -> i64 {
 }
 /// Represents a single term in a polynomial, consisting of an exponent and a coefficient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Monomial {
+pub struct Monomial<F:PrimeField> {
     /// The exponent of the monomial.
-    pub exponent: u32,
+    pub exponent: usize,
     /// The coefficient of the monomial.
-    pub coefficients: i64,
+    pub coefficients: F,
 }
-impl Monomial {
+impl<F: PrimeField> Monomial<F> {
     /// Creates a new `Monomial` with the given exponent and coefficient.
     ///
     /// # Arguments
@@ -38,7 +40,7 @@ impl Monomial {
     /// # Returns
     ///
     /// A new `Monomial` instance.
-    pub fn new(exponent: u32, coefficients: i64) -> Monomial {
+    pub fn new(exponent: usize, coefficients: F) -> Monomial<F> {
         Monomial {
             exponent,
             coefficients,
@@ -49,23 +51,22 @@ impl Monomial {
     /// # Returns
     ///
     /// A default `Monomial` instance.
-    pub fn default() -> Monomial {
+    pub fn default() -> Monomial<F> {
         Monomial {
             exponent: 0,
-            coefficients: 0,
+            coefficients: F::zero(),
         }
     }
 }
 /// Represents a polynomial, which is a sum of monomials.
 #[derive(Debug, Clone)]
-pub struct UnivariatePolynomial {
+pub struct UnivariatePolynomial<F: PrimeField> {
     /// The list of monomials that make up the polynomial.
-    monomials: Vec<Monomial>,
+    monomials: Vec<Monomial<F>>,
     /// The degree of the polynomial, if known.
     pub degree: Option<u32>,
-    pub prime_modulo: Option<u32>,
 }
-impl UnivariatePolynomial {
+impl<F: PrimeField> UnivariatePolynomial<F> {
     /// Adds a monomial to the polynomial. If a monomial with the same exponent already exists,
     /// their coefficients are combined.
     ///
@@ -74,11 +75,10 @@ impl UnivariatePolynomial {
     /// * `exponent` - The exponent of the monomial to add.
     /// * `coefficients` - The coefficient of the monomial to add.
 
-    pub fn new(monomials: Vec<Monomial>, prime_modulo: u32) -> UnivariatePolynomial {
+    pub fn new(monomials: Vec<Monomial<F>>) -> UnivariatePolynomial<F> {
         UnivariatePolynomial {
             monomials,
             degree: None,
-            prime_modulo: Some(prime_modulo),
         }
     }
     /// Creates a default `Polynomial` with no monomials and no degree.
@@ -86,16 +86,13 @@ impl UnivariatePolynomial {
     /// # Returns
     ///
     /// A default `Polynomial` instance.
-    pub fn default() -> UnivariatePolynomial {
+    pub fn default() -> UnivariatePolynomial<F> {
         UnivariatePolynomial {
             monomials: Vec::new(),
-            degree: None,
-            prime_modulo: Some(1),
+            degree: None
+          }
         }
-    }
-    pub fn set_prime_modulo(&mut self, prime_modulo: u32) {
-        self.prime_modulo = Some(prime_modulo);
-    }
+
     /// Evaluates the polynomial at a given value of `x`.
     ///
     /// # Arguments
@@ -105,11 +102,11 @@ impl UnivariatePolynomial {
     /// # Returns
     ///
     /// The result of evaluating the polynomial at `x`.
-    pub fn evaluate(&self, x: i64) -> i64 {
-        let mut result: i64 = 0;
+    pub fn evaluate(&self, x: i64) -> F {
+        let mut result: F = F::zero();
         let n = self.monomials.len();
         for i in 0..n {
-            result += self.monomials[i].coefficients * x.pow(self.monomials[i].exponent as u32);
+            result += self.monomials[i].coefficients * F::from(x).pow(&[self.monomials[i].exponent as u64]);
         }
         return result;
     }
@@ -123,8 +120,8 @@ impl UnivariatePolynomial {
         let n = self.monomials.len();
         if self.degree.is_none() {
             for i in 0..n {
-                if self.monomials[i].exponent > self.degree.unwrap_or(0) {
-                    self.degree = Some(self.monomials[i].exponent);
+                if self.monomials[i].exponent as u32 > self.degree.unwrap_or(0) {
+                    self.degree = Some(self.monomials[i].exponent as u32);
                 }
             }
             return self.degree;
@@ -143,36 +140,39 @@ impl UnivariatePolynomial {
     ///
     /// A `UnivariatePolynomial` that passes through the given points.
     //add prime modulo
-    pub fn interpolate(x: Vec<i64>, y: Vec<i64>, p: u32) -> UnivariatePolynomial {
+    pub fn interpolate(x: Vec<F>, y: Vec<F>,) -> UnivariatePolynomial<F> {
         let n = x.len();
         let mut result = UnivariatePolynomial::default();
 
-        result.set_prime_modulo(p);
+        // result.set_prime_modulo(p);
 
         for i in 0..n {
-            let mut denominator: i64 = 1;
+            let mut denominator = F::from(1);
 
-            let mut numerator = UnivariatePolynomial::new(vec![Monomial::new(0, 1)], p);
+            let mut numerator = UnivariatePolynomial::new(vec![Monomial::new(0, F::one())]);
 
             let mut a = y[i];
             for j in 0..n {
                 if i != j {
-                    let x_n = Monomial::new(1, 1); // x
+                    let x_n = Monomial::new(1, F::one()); // x
                     let x_j =
-                        Monomial::new(0, modulo((-x[j]).try_into().unwrap(), p as i32) as i64);
-                    let temp_poly = UnivariatePolynomial::new(vec![x_n, x_j], p);
+                        Monomial::new(0, F::from(-x[j]));
+                    let temp_poly = UnivariatePolynomial::new(vec![x_n, x_j]);
 
+                  
                     numerator = numerator * temp_poly;
 
-                    denominator *= x[i] - x[j];
-                    denominator = modulo(denominator as i32, p as i32) as i64;
+                    denominator = denominator * (F::from(x[i] )- F::from(x[j]));
                 }
             }
 
-            a = a * mod_inverse(denominator, p as i64);
+                     a /= denominator;
 
+
+
+            
             for monomial in &mut numerator.monomials {
-                monomial.coefficients = modulo((monomial.coefficients * a) as i32, p as i32) as i64;
+                monomial.coefficients *= F::from(a);
             }
 
             result = result + numerator;
@@ -182,8 +182,8 @@ impl UnivariatePolynomial {
     }
 }
 
-impl Mul for UnivariatePolynomial {
-    type Output = UnivariatePolynomial;
+impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
+    type Output = UnivariatePolynomial<F>;
     /// Multiplies two polynomials and returns the result.
     ///
     /// # Arguments
@@ -194,55 +194,42 @@ impl Mul for UnivariatePolynomial {
     ///
     /// A new `Polynomial` representing the product of the two polynomials.
 
-    fn mul(self, p2: UnivariatePolynomial) -> Self {
-        let p1: Vec<Monomial> = self.monomials;
-        let p2: Vec<Monomial> = p2.monomials;
-        let p: u32 = self.prime_modulo.unwrap();
+    fn mul(self, p2: UnivariatePolynomial<F>) -> Self {
+         let p1: Vec<Monomial<F>> = self.monomials;
+        let p2: Vec<Monomial<F>> = p2.monomials;
 
-        let mut polynomial: Vec<Monomial> = Vec::new();
+        let mut polynomial: Vec<Monomial<F>> = Vec::new();
         for i in 0..p1.len() {
             for j in 0..p2.len() {
-                let coefficients = modulo(
-                    (modulo(p1[i].coefficients as i32, p as i32) as i64
-                        * modulo(p2[j].coefficients as i32, p as i32) as i64)
-                        as i32,
-                    p as i32,
-                ) as i64;
                 polynomial.push(Monomial {
-                    coefficients: (coefficients % p as i64 + p as i64) % p as i64,
-
+                    coefficients: p1[i].coefficients * p2[j].coefficients,
                     exponent: p1[i].exponent.wrapping_add(p2[j].exponent),
                 });
             }
         }
         // Combine monomials with the same exponent
+
         for i in 0..polynomial.len() {
             let mut j = i + 1;
             while j < polynomial.len() {
                 if polynomial[i].exponent == polynomial[j].exponent {
-                    polynomial[i].coefficients =
-                        polynomial[i].coefficients + polynomial[j].coefficients;
-                    polynomial[i].coefficients =
-                        modulo((polynomial[i].coefficients) as i32, p as i32) as i64;
-
+                    let (left, right) = polynomial.split_at_mut(j);
+                    left[i].coefficients += right[0].coefficients;
                     polynomial.remove(j);
                 } else {
                     j += 1;
                 }
             }
         }
-        polynomial.sort();
-
         UnivariatePolynomial {
             monomials: polynomial,
             degree: None,
-            prime_modulo: Some(p),
         }
     }
 }
 
-impl Add for UnivariatePolynomial {
-    type Output = UnivariatePolynomial;
+impl<F: PrimeField> Add for UnivariatePolynomial<F> {
+    type Output = UnivariatePolynomial<F>;
     /// Adds two polynomials and returns the result.
     ///
     /// # Arguments
@@ -253,11 +240,10 @@ impl Add for UnivariatePolynomial {
     ///
     /// A new `Polynomial` representing the sum of the two polynomials.
 
-    fn add(self, p2: UnivariatePolynomial) -> Self {
-        let p1: Vec<Monomial> = self.monomials;
-        let p2: Vec<Monomial> = p2.monomials;
-        let mut polynomial: Vec<Monomial> = Vec::new();
-        let p: u32 = self.prime_modulo.unwrap();
+      fn add(self, p2: UnivariatePolynomial<F>) -> Self {
+        let p1: Vec<Monomial<F>> = self.monomials;
+        let p2: Vec<Monomial<F>> = p2.monomials;
+        let mut polynomial: Vec<Monomial<F>> = Vec::new();
         polynomial = [p1, p2].concat();
         // Combine monomials with the same exponent
 
@@ -265,22 +251,17 @@ impl Add for UnivariatePolynomial {
             let mut j = i + 1;
             while j < polynomial.len() {
                 if polynomial[i].exponent == polynomial[j].exponent {
-                    polynomial[i].coefficients =
-                        polynomial[i].coefficients + polynomial[j].coefficients;
-                    polynomial[i].coefficients =
-                        modulo((polynomial[i].coefficients) as i32, p as i32) as i64;
-
+                    let (left, right) = polynomial.split_at_mut(j);
+                    left[i].coefficients += right[0].coefficients;
                     polynomial.remove(j);
                 } else {
                     j += 1;
                 }
             }
         }
-        polynomial.sort();
         UnivariatePolynomial {
             monomials: polynomial,
             degree: None,
-            prime_modulo: Some(p),
         }
     }
 }
@@ -288,30 +269,31 @@ impl Add for UnivariatePolynomial {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ark_bn254::Fq;
 
     #[test]
     /// Tests the `evaluate` method of the `Polynomial` struct.
     fn test_evaluate() {
         let default = UnivariatePolynomial::default();
-        let m1 = Monomial::new(2, 3);
-        let m2 = Monomial::new(1, 2);
-        let m3 = Monomial::new(0, 5);
+        let m1 = Monomial::new(2, Fq::from(3u32));
+        let m2 = Monomial::new(1, Fq::from(2u32));
+        let m3 = Monomial::new(0, Fq::from(5u32));
 
         let p = UnivariatePolynomial {
             monomials: vec![m1, m2, m3],
             ..default
         };
         let result = p.evaluate(4);
-        assert_eq!(result, 61);
+        assert_eq!(result, Fq::from(61u32));
     }
 
     /// Tests the `degree` method of the `UnivariatePolynomial` struct.
 
     #[test]
     fn test_degree() {
-        let default = UnivariatePolynomial::default();
-        let m1 = Monomial::new(2, 3);
-        let m2 = Monomial::new(1, 2);
+        let default = UnivariatePolynomial::<Fq>::default();
+        let m1 = Monomial::new(2, Fq::from(3u32));
+        let m2 = Monomial::new(1, Fq::from(2u32));
 
         let mut p = UnivariatePolynomial {
             monomials: vec![m1, m2],
@@ -325,50 +307,42 @@ mod tests {
 
     #[test]
     fn test_multiplication() {
-        let default = UnivariatePolynomial::default();
-        let m1 = Monomial::new(2, 5);
-        let m2 = Monomial::new(1, -4);
-        let m5 = Monomial::new(0, 2);
-        let m3 = Monomial::new(3, 1);
-        let m4 = Monomial::new(2, -2);
-        let m6 = Monomial::new(0, 5);
+           let default = UnivariatePolynomial::default();
+        let m1 = Monomial::new(3, Fq::from(4u32));
+        let m2 = Monomial::new(2, Fq::from(3u32));
+        let m5 = Monomial::new(1, Fq::from(3u32));
+        let m3 = Monomial::new(2, Fq::from(5u32));
+        let m4 = Monomial::new(1, Fq::from(7u32));
 
-        let p1 = UnivariatePolynomial {
+        let  p1 = UnivariatePolynomial {
             monomials: vec![m1, m2, m5],
-            prime_modulo: Some(6),
             ..default
         };
-        let p2 = UnivariatePolynomial {
-            monomials: vec![m3, m4, m6],
+        let  p2 = UnivariatePolynomial {
+            monomials: vec![m3, m4],
             ..default
         };
         let result = p1 * p2;
-        assert_eq!(result.monomials[5].coefficients, 5);
-        assert_eq!(result.monomials[4].coefficients, 4);
-        assert_eq!(result.monomials[3].coefficients, 4);
-        assert_eq!(result.monomials[2].coefficients, 3);
-        assert_eq!(result.monomials[1].coefficients, 4);
-        assert_eq!(result.monomials[0].coefficients, 4);
-        assert_eq!(result.monomials[5].exponent, 5);
-        assert_eq!(result.monomials[4].exponent, 4);
-        assert_eq!(result.monomials[3].exponent, 3);
-        assert_eq!(result.monomials[2].exponent, 2);
-        assert_eq!(result.monomials[1].exponent, 1);
-        assert_eq!(result.monomials[0].exponent, 0);
+        assert_eq!(result.monomials[0].coefficients, Fq::from(20u32));
+        assert_eq!(result.monomials[1].coefficients, Fq::from(43u32));
+        assert_eq!(result.monomials[2].coefficients, Fq::from(36u32));
+        assert_eq!(result.monomials[3].coefficients, Fq::from(21u32));
+        assert_eq!(result.monomials[0].exponent, 5);
+        assert_eq!(result.monomials[1].exponent, 4);
+        assert_eq!(result.monomials[2].exponent, 3);
+        assert_eq!(result.monomials[3].exponent, 2);
+
     }
 
     /// Tests the Lagrange interpolation method.
     #[test]
     fn test_interpolate() {
-        let x = vec![0, -2, 2];
-        let y = vec![4, 1, 3];
-        let p = 5;
-        let result = UnivariatePolynomial::interpolate(x, y, p);
-        assert_eq!(result.monomials[0].coefficients, 4);
-        assert_eq!(result.monomials[0].exponent, 0);
-        assert_eq!(result.monomials[1].coefficients, 3);
-        assert_eq!(result.monomials[1].exponent, 1);
-        assert_eq!(result.monomials[2].coefficients, 2);
-        assert_eq!(result.monomials[2].exponent, 2);
+        let x = vec![Fq::from(1), Fq::from(2), Fq::from(3)];
+        let y = vec![Fq::from(1), Fq::from(4), Fq::from(9),];
+        let result = UnivariatePolynomial::<Fq>::interpolate(x, y);
+        assert_eq!(result.monomials[0].coefficients, Fq::from(1u32));
+        assert_eq!(result.monomials[0].exponent, 2);
     }
-}
+
+    }
+
