@@ -1,6 +1,6 @@
 [package]
 name = "zkpolynomial"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A Rust library for polynomial operations, including addition, multiplication, evaluation, and Lagrange interpolation for univariate polynomials."
 license = "MIT"
