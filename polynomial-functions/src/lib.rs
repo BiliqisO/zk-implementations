@@ -1,29 +1,10 @@
 use ark_ff::PrimeField;
 
-use core::num;
 use std::ops::{Add, Mul};
-fn modulo(a: i32, n: i32) -> i32 {
-    ((a % n) + n) % n
-}
-fn mod_inverse(b: i64, p: i64) -> i64 {
-    let mut a = b;
-    let mut m = p;
-    let mut u = 1;
-    let mut v = 0;
 
-    while a != 0 {
-        let t = m / a;
-        m -= t * a;
-        std::mem::swap(&mut a, &mut m);
-        v -= t * u;
-        std::mem::swap(&mut u, &mut v);
-    }
-
-    (v + p) % p
-}
 /// Represents a single term in a polynomial, consisting of an exponent and a coefficient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Monomial<F:PrimeField> {
+pub struct Monomial<F: PrimeField> {
     /// The exponent of the monomial.
     pub exponent: usize,
     /// The coefficient of the monomial.
@@ -89,9 +70,9 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     pub fn default() -> UnivariatePolynomial<F> {
         UnivariatePolynomial {
             monomials: Vec::new(),
-            degree: None
-          }
+            degree: None,
         }
+    }
 
     /// Evaluates the polynomial at a given value of `x`.
     ///
@@ -106,7 +87,8 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
         let mut result: F = F::zero();
         let n = self.monomials.len();
         for i in 0..n {
-            result += self.monomials[i].coefficients * F::from(x).pow(&[self.monomials[i].exponent as u64]);
+            result += self.monomials[i].coefficients
+                * F::from(x).pow(&[self.monomials[i].exponent as u64]);
         }
         return result;
     }
@@ -140,7 +122,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     ///
     /// A `UnivariatePolynomial` that passes through the given points.
     //add prime modulo
-    pub fn interpolate(x: Vec<F>, y: Vec<F>,) -> UnivariatePolynomial<F> {
+    pub fn interpolate(x: Vec<F>, y: Vec<F>) -> UnivariatePolynomial<F> {
         let n = x.len();
         let mut result = UnivariatePolynomial::default();
 
@@ -155,22 +137,17 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
             for j in 0..n {
                 if i != j {
                     let x_n = Monomial::new(1, F::one()); // x
-                    let x_j =
-                        Monomial::new(0, F::from(-x[j]));
+                    let x_j = Monomial::new(0, F::from(-x[j]));
                     let temp_poly = UnivariatePolynomial::new(vec![x_n, x_j]);
 
-                  
                     numerator = numerator * temp_poly;
 
-                    denominator = denominator * (F::from(x[i] )- F::from(x[j]));
+                    denominator = denominator * (F::from(x[i]) - F::from(x[j]));
                 }
             }
 
-                     a /= denominator;
+            a /= denominator;
 
-
-
-            
             for monomial in &mut numerator.monomials {
                 monomial.coefficients *= F::from(a);
             }
@@ -195,7 +172,7 @@ impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
     /// A new `Polynomial` representing the product of the two polynomials.
 
     fn mul(self, p2: UnivariatePolynomial<F>) -> Self {
-         let p1: Vec<Monomial<F>> = self.monomials;
+        let p1: Vec<Monomial<F>> = self.monomials;
         let p2: Vec<Monomial<F>> = p2.monomials;
 
         let mut polynomial: Vec<Monomial<F>> = Vec::new();
@@ -240,7 +217,7 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
     ///
     /// A new `Polynomial` representing the sum of the two polynomials.
 
-      fn add(self, p2: UnivariatePolynomial<F>) -> Self {
+    fn add(self, p2: UnivariatePolynomial<F>) -> Self {
         let p1: Vec<Monomial<F>> = self.monomials;
         let p2: Vec<Monomial<F>> = p2.monomials;
         let mut polynomial: Vec<Monomial<F>> = Vec::new();
@@ -307,18 +284,18 @@ mod tests {
 
     #[test]
     fn test_multiplication() {
-           let default = UnivariatePolynomial::default();
+        let default = UnivariatePolynomial::default();
         let m1 = Monomial::new(3, Fq::from(4u32));
         let m2 = Monomial::new(2, Fq::from(3u32));
         let m5 = Monomial::new(1, Fq::from(3u32));
         let m3 = Monomial::new(2, Fq::from(5u32));
         let m4 = Monomial::new(1, Fq::from(7u32));
 
-        let  p1 = UnivariatePolynomial {
+        let p1 = UnivariatePolynomial {
             monomials: vec![m1, m2, m5],
             ..default
         };
-        let  p2 = UnivariatePolynomial {
+        let p2 = UnivariatePolynomial {
             monomials: vec![m3, m4],
             ..default
         };
@@ -331,18 +308,15 @@ mod tests {
         assert_eq!(result.monomials[1].exponent, 4);
         assert_eq!(result.monomials[2].exponent, 3);
         assert_eq!(result.monomials[3].exponent, 2);
-
     }
 
     /// Tests the Lagrange interpolation method.
     #[test]
     fn test_interpolate() {
         let x = vec![Fq::from(1), Fq::from(2), Fq::from(3)];
-        let y = vec![Fq::from(1), Fq::from(4), Fq::from(9),];
+        let y = vec![Fq::from(1), Fq::from(4), Fq::from(9)];
         let result = UnivariatePolynomial::<Fq>::interpolate(x, y);
         assert_eq!(result.monomials[0].coefficients, Fq::from(1u32));
         assert_eq!(result.monomials[0].exponent, 2);
     }
-
-    }
-
+}
