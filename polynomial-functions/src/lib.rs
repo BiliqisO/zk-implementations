@@ -43,7 +43,7 @@ impl<F: PrimeField> Monomial<F> {
 #[derive(Debug, Clone)]
 pub struct UnivariatePolynomial<F: PrimeField> {
     /// The list of monomials that make up the polynomial.
-    monomials: Vec<Monomial<F>>,
+    pub monomials: Vec<Monomial<F>>,
     /// The degree of the polynomial, if known.
     pub degree: Option<u32>,
 }
