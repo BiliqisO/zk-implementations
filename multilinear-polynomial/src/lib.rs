@@ -1,20 +1,49 @@
 use ark_ff::PrimeField;
 use std::vec;
+/// Represents a monomial in evaluation form.
+/// 
+/// # Fields
+/// 
+/// * `hypercube` - A vector of field elements representing the boolean hypercube.
+/// * `value` - A field element representing the value of the monomial.
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EvaluationFormMonomial<F: PrimeField> {
     pub hypercube: Vec<F>,
     pub value: F,
 }
+/// Represents a polynomial in evaluation form.
+/// 
+/// # Fields
+/// 
+/// * `evaluation` - A vector of `EvaluationFormMonomial` representing the  polynomial in evaluationn form.
 #[derive(Debug)]
 pub struct EvaluationFormPolynomial<F: PrimeField> {
     pub evaluation: Vec<EvaluationFormMonomial<F>>,
 }
+
 impl<F: PrimeField> EvaluationFormPolynomial<F> {
     //evaluation form representation
+    /// Creates a new `EvaluationFormPolynomial` with an empty evaluation.
+    /// 
+    /// # Returns
+    /// 
+    /// A new `EvaluationFormPolynomial` instance with an empty evaluation.
+    
+    
     pub fn default() -> Self {
         EvaluationFormPolynomial { evaluation: vec![] }
     }
+
+    /// Creates a new `EvaluationFormPolynomial` from a vector of field elements.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `values` - A reference to a vector of field elements.
+    /// 
+    /// # Returns
+    /// 
+    /// A new `EvaluationFormPolynomial` instance with the given values.
 
     pub fn new(values: &Vec<F>) -> Self {
         let value = values.len();
@@ -31,7 +60,20 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
         }
         EvaluationFormPolynomial { evaluation: data }
     }
-    //partial evaluation
+   /// Performs partial evaluation of the polynomial at a given position with a specific value.
+///
+/// This method evaluates the polynomial partially by fixing one of its variables to a specific value
+/// at the given position. It processes each term in the polynomial, removes the variable at the
+/// specified position from the hypercube, and combines like terms after evaluation.
+///
+/// # Arguments
+///
+/// * `values` - The field element value to evaluate at
+/// * `position` - The position/variable index to evaluate
+///
+/// # Returns
+///
+/// Returns a new `EvaluationFormPolynomial` representing the partially evaluated polynomial
     pub fn partial_evaluate(&mut self, values: F, position: usize) -> Self {
         let evaluation_form_vec = &self.evaluation;
         let self_vec_len = evaluation_form_vec.len();
@@ -64,15 +106,47 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
         }
     }
 }
+/// Creates a multilinear monomial.
+/// 
+/// # Arguments
+/// 
+/// * `coeff` - The coefficient of the monomial.
+/// * `variables` - A vector of field elements representing the variables of the monomial.
+/// 
+/// # Returns
+/// 
+/// A tuple containing the coefficient and the variables of the monomial.
+
 pub fn multilinear_monomial<F: PrimeField>(coeff: F, variables: Vec<F>) -> (F, Vec<F>) {
     let monomial: (F, Vec<F>) = (coeff, variables);
     return monomial;
 }
+/// Creates a sparse multilinear polynomial.
+/// 
+/// # Arguments
+/// 
+/// * `monomial` - A vector of tuples where each tuple contains a coefficient and a vector of variables.
+/// 
+/// # Returns
+/// 
+/// A vector of tuples representing the sparse multilinear polynomial.
 pub fn multilinear_polynomial_sparse<F: PrimeField>(
     monomial: Vec<(F, Vec<F>)>,
 ) -> Vec<(F, Vec<F>)> {
     monomial
 }
+/// Partially evaluates a sparse multilinear polynomial at a given position.
+/// 
+/// # Arguments
+/// 
+/// * `polyomial` - A vector of tuples representing the sparse multilinear polynomial.
+/// * `values` - The value at which to evaluate the polynomial.
+/// * `position` - The position at which to evaluate the polynomial.
+/// 
+/// # Returns
+/// 
+/// A vector of tuples representing the partially evaluated polynomial.
+
 pub fn sparse_partial_evalauation<F: PrimeField>(
     mut polyomial: Vec<(F, Vec<F>)>,
     values: F,
@@ -95,6 +169,16 @@ pub fn sparse_partial_evalauation<F: PrimeField>(
     }
     result
 }
+/// Generates the boolean hypercube for a given number of variables.
+/// 
+/// # Arguments
+/// 
+/// * `no_of_variables` - The number of variables.
+/// 
+/// # Returns
+/// 
+/// A vector of vectors representing the boolean hypercube.
+
 pub fn boolean_hypercube<F: PrimeField>(no_of_variables: usize) -> Vec<Vec<F>> {
     let length_of_hypercube = 2_usize.pow(no_of_variables as u32);
 
