@@ -89,7 +89,11 @@ pub fn passworded_setup<F: PrimeField>(
 
     for _ in 1..threshold {
         let mut rng = ark_std::rand::thread_rng();
-        let x = F::rand(&mut rng);
+        let mut x = F::rand(&mut rng);
+        // Regenerate x if it equals the password
+        while x == password {
+            x = F::rand(&mut rng);
+        }
         let y = F::rand(&mut rng);
         x_s.push(x);
         y_s.push(y);
