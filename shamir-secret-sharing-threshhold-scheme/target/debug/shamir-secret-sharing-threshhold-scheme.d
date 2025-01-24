@@ -1,1 +1,0 @@
-/Users/mac/Documents/zk-masterclass/zk-implementations/shamir-secret-sharing-threshhold-scheme/target/debug/shamir-secret-sharing-threshhold-scheme: /Users/mac/Documents/zk-masterclass/zk-implementations/shamir-secret-sharing-threshhold-scheme/src/main.rs
