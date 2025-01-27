@@ -17,7 +17,7 @@ pub struct EvaluationFormMonomial<F: PrimeField> {
 /// # Fields
 /// 
 /// * `evaluation` - A vector of `EvaluationFormMonomial` representing the  polynomial in evaluationn form.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EvaluationFormPolynomial<F: PrimeField> {
     pub evaluation: Vec<EvaluationFormMonomial<F>>,
 }
@@ -46,6 +46,9 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
     /// A new `EvaluationFormPolynomial` instance with the given values.
 
     pub fn new(values: &Vec<F>) -> Self {
+        // Check if the length of values is a power of 2
+        assert!(values.len().is_power_of_two(), "Length of values must be a power of 2");
+
         let value = values.len();
         let hypercube_size = value.ilog2();
         let hypercube = boolean_hypercube(hypercube_size as usize);
