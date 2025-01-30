@@ -14,10 +14,10 @@ impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
             transcript: Vec::new(),
         }
     }
-   pub fn absorb(self, input: &[u8]) -> Self {
+   pub fn absorb(&self, input: &[u8]) -> &Self {
         let mut hash_function = self.hash_function.clone();
         hash_function.update(input);
-        self
+        &self
     }
    pub fn squeeze(mut self) -> Self {
         let hash_function = self.hash_function.clone();
@@ -43,9 +43,12 @@ mod tests {
         let first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
             FiatShamir::new(hash_function);
         let input = b"biliqis";
-        let absorbed = first.absorb(input);
+        let input1: &[u8; 7] = b"onikoyi";
+        first.absorb(input);
+        first.absorb(input1);
 
-        let squeezed = absorbed.squeeze();
+
+        let squeezed = first.squeeze();
 
         assert_eq!(squeezed.transcript.len(), 1);
     }
