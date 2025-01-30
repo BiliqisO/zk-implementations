@@ -19,16 +19,17 @@ impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
         hash_function.update(input);
         &self
     }
-   pub fn squeeze(&mut self) -> &Self {
+   pub fn squeeze(&self) -> FiatShamir<K, F> {
         let hash_function = self.hash_function.clone();
-        let result = hash_function.finalize();
+        let result = hash_function.clone().finalize();
 
         let result_bytes: Vec<u8> = result.to_vec();
         println!(" result_bytes{:?}", &result_bytes);
         let result_field = F::from_le_bytes_mod_order(&result_bytes);
         println!(" result_field{:?}", &result_field);
-        self.transcript.push(result_field);
-        self
+        let mut transcript = self.transcript.clone();
+        transcript.push(result_field);
+        FiatShamir { hash_function, transcript }
     }
 }
 #[cfg(test)]
@@ -40,14 +41,14 @@ mod tests {
     #[test]
     fn test_fiat_shamir() {
         let hash_function = Sha3_256::new();
-        let mut first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
+        let  first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
             FiatShamir::new(hash_function);
         let input = b"biliqis";
         let input1: &[u8; 7] = b"onikoyi";
         first.absorb(input);
         first.absorb(input1);
-        first.squeeze();
+        let squeezed =  first.squeeze();
 
-        assert_eq!(first.transcript.len(), 1);
+        assert_eq!(squeezed.transcript.len(), 1);
     }
 }
