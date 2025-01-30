@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use ark_ff::PrimeField;
 use sha3::Digest;
 
@@ -5,31 +7,27 @@ use sha3::Digest;
 #[derive(Debug)]
 pub struct FiatShamir<K, F: PrimeField> {
    pub hash_function: K,
-   pub transcript: Vec<F>, //all the random challenges
+   pub transcript: PhantomData<F>, //all the random challenges
 }
 impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
    pub fn new(hash_function: K) -> Self {
         FiatShamir {
             hash_function,
-            transcript: Vec::new(),
+            transcript: PhantomData,
         }
     }
-   pub fn absorb(&self, input: &[u8]) -> &Self {
-        let mut hash_function = self.hash_function.clone();
-        hash_function.update(input);
-        &self
+   pub fn absorb(&mut self, input: &[u8]) {
+       self.hash_function.update(input);
+    
     }
-   pub fn squeeze(&self) -> FiatShamir<K, F> {
-        let hash_function = self.hash_function.clone();
-        let result = hash_function.clone().finalize();
+   pub fn squeeze(&self) -> F{
+        let result = self.hash_function.clone().finalize();
 
         let result_bytes: Vec<u8> = result.to_vec();
         println!(" result_bytes{:?}", &result_bytes);
         let result_field = F::from_le_bytes_mod_order(&result_bytes);
-        println!(" result_field{:?}", &result_field);
-        let mut transcript = self.transcript.clone();
-        transcript.push(result_field);
-        FiatShamir { hash_function, transcript }
+          println!(" result_field{:?}", &result_field);
+        result_field
     }
 }
 #[cfg(test)]
@@ -41,14 +39,20 @@ mod tests {
     #[test]
     fn test_fiat_shamir() {
         let hash_function = Sha3_256::new();
-        let  first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
+        let hash_function2 = Sha3_256::new();
+        let mut  first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
+            FiatShamir::new(hash_function2);
+        let  mut  second: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
             FiatShamir::new(hash_function);
         let input = b"biliqis";
         let input1: &[u8; 7] = b"onikoyi";
+        let input2: &[u8;10] = b"onikashoyi";
         first.absorb(input);
-        first.absorb(input1);
-        let squeezed =  first.squeeze();
+        second.absorb(input2);
+       first.squeeze();
+        // second.absorb(input2);
+       second.squeeze();
 
-        assert_eq!(squeezed.transcript.len(), 1);
+        // assert_eq!(squeeze2.transcript.len(), 1);
     }
 }
