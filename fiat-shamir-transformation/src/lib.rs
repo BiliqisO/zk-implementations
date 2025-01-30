@@ -19,7 +19,7 @@ impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
         hash_function.update(input);
         &self
     }
-   pub fn squeeze(mut self) -> Self {
+   pub fn squeeze(&mut self) -> &Self {
         let hash_function = self.hash_function.clone();
         let result = hash_function.finalize();
 
@@ -40,16 +40,14 @@ mod tests {
     #[test]
     fn test_fiat_shamir() {
         let hash_function = Sha3_256::new();
-        let first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
+        let mut first: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, Fq> =
             FiatShamir::new(hash_function);
         let input = b"biliqis";
         let input1: &[u8; 7] = b"onikoyi";
         first.absorb(input);
         first.absorb(input1);
+        first.squeeze();
 
-
-        let squeezed = first.squeeze();
-
-        assert_eq!(squeezed.transcript.len(), 1);
+        assert_eq!(first.transcript.len(), 1);
     }
 }
