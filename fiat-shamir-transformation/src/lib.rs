@@ -9,7 +9,11 @@ pub struct FiatShamir<K, F: PrimeField> {
    pub hash_function: K,
    pub transcript: PhantomData<F>, //all the random challenges
 }
-impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
+impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> 
+    where
+    K: Digest + Clone,
+    F: PrimeField,
+    {
    pub fn new(hash_function: K) -> Self {
         FiatShamir {
             hash_function,

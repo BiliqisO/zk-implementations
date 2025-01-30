@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "fiat-shamir-transformation"
 version = "0.1.0"
-source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#05000729465252ec83f22097afd615dc1a7fa71b"
+source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#2f79b7ca0c1fb76b820f58b67ab9876c2a1ac34c"
 dependencies = [
  "ark-bn254",
  "ark-ff",
