@@ -1,11 +1,13 @@
-use  ark_bn254::Fq;
+use ark_bn254::Fq;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use multilinear_polynomial::{boolean_hypercube, multilinear_monomial, multilinear_polynomial_sparse, sparse_partial_evalauation, EvaluationFormPolynomial};
-
+use multilinear_polynomial::{
+    boolean_hypercube, multilinear_monomial, multilinear_polynomial_sparse,
+    sparse_partial_evalauation, EvaluationFormPolynomial,
+};
 
 pub fn bench_evaluation_form_partial(c: &mut Criterion) {
     let values: Vec<Fq> = vec![Fq::from(0), Fq::from(2), Fq::from(0), Fq::from(5)];
-    let  poly = EvaluationFormPolynomial::new(&values);
+    let poly = EvaluationFormPolynomial::new(&values);
 
     c.bench_function("Partial Evaluation", |b| {
         b.iter(|| {
@@ -24,7 +26,11 @@ pub fn bench_sparse_partial_evaluation(c: &mut Criterion) {
 
     c.bench_function("Sparse Partial Evaluation", |b| {
         b.iter(|| {
-            let result = sparse_partial_evalauation(black_box(p.clone()), black_box(Fq::from(5)), black_box(1));
+            let result = sparse_partial_evalauation(
+                black_box(p.clone()),
+                black_box(Fq::from(5)),
+                black_box(1),
+            );
             sparse_partial_evalauation(result, black_box(Fq::from(5)), black_box(0));
         });
     });
