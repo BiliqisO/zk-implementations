@@ -1,53 +1,24 @@
 use ark_ff::PrimeField;
-use std::{result, vec};
-pub mod sumcheck;
-use serde::{Deserialize, Serialize};
-/// Represents a monomial in evaluation form.
-///
-/// # Fields
-///
-/// * `hypercube` - A vector of field elements representing the boolean hypercube.
-/// * `value` - A field element representing the value of the monomial.
+use std::vec;
 
-#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
 
-pub struct EvaluationFormMonomial<F: PrimeField> {
-    pub hypercube: Vec<F>,
-    pub value: F,
-}
-/// Represents a polynomial in evaluation form.
-///
-/// # Fields
-///
-/// * `evaluation` - A vector of `EvaluationFormMonomial` representing the  polynomial in evaluationn form.
-#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive( Debug, Clone, PartialEq)]
 pub struct EvaluationFormPolynomial<F: PrimeField> {
-    pub representation: Vec<EvaluationFormMonomial<F>>,
+    pub representation: Vec<F>,
+    pub hypercube: Vec<Vec<F>>,
 }
 
 impl<F: PrimeField> EvaluationFormPolynomial<F> {
-    //evaluation form representation
-    /// Creates a new `EvaluationFormPolynomial` with an empty evaluation.
-    ///
-    /// # Returns
-    ///
-    /// A new `EvaluationFormPolynomial` instance with an empty evaluation.
+ 
 
     pub fn default() -> Self {
         EvaluationFormPolynomial {
             representation: vec![],
+            hypercube: vec![],
         }
     }
 
-    /// Creates a new `EvaluationFormPolynomial` from a vector of field elements.
-    ///
-    /// # Arguments
-    ///
-    /// * `values` - A reference to a vector of field elements.
-    ///
-    /// # Returns
-    ///
-    /// A new `EvaluationFormPolynomial` instance with the given values.
+
 
     pub fn new(values: &Vec<F>) -> Self {
         // Check if the length of values is a power of 2
@@ -61,106 +32,62 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
         let hypercube = boolean_hypercube(hypercube_size as usize);
 
         let evaluation = EvaluationFormPolynomial::default();
-        let mut data = evaluation.representation.clone();
+        let mut data = evaluation.representation;
         for i in 0..value {
-            data.push(EvaluationFormMonomial {
-                hypercube: hypercube[i].clone(),
-                value: values[i],
-            });
+            data.push(values[i]);
         }
+
         EvaluationFormPolynomial {
             representation: data,
+            hypercube,
         }
     }
-    /// Performs partial evaluation of the polynomial at a given position with a specific value.
-    ///
-    /// This method evaluates the polynomial partially by fixing one of its variables to a specific value
-    /// at the given position. It processes each term in the polynomial, removes the variable at the
-    /// specified position from the hypercube, and combines like terms after evaluation.
-    ///
-    /// # Arguments
-    ///
-    /// * `values` - The field element value to evaluate at
-    /// * `position` - The position/variable index to evaluate
-    ///
-    /// # Returns
-    ///
-    /// Returns a new `EvaluationFormPolynomial` representing the partially evaluated polynomial
+
     pub fn partial_evaluate(&mut self, values: F, position: usize) -> Self {
         let evaluation_form_vec = &self.representation;
         let self_vec_len = evaluation_form_vec.len();
-        let mut poly = EvaluationFormPolynomial::default().representation;
+        let mut poly: Vec<(Vec<F>, F)> = Vec::new();
+        let mut rep = Vec::new();
 
         for i in 0..self_vec_len {
-            let mut hypercube = evaluation_form_vec[i].hypercube.clone();
+            let mut hypercube = self.hypercube[i].clone();
 
             hypercube.remove(position);
 
-            poly.push(EvaluationFormMonomial {
-                hypercube: hypercube,
-                value: evaluation_form_vec[i].value,
-            });
+            poly.push((hypercube, evaluation_form_vec[i]));
         }
-        let mut merged_poly: Vec<EvaluationFormMonomial<F>> = vec![];
+        let mut merged_poly: Vec<(Vec<F>, F)> = vec![];
 
         for eval in poly {
-            if let Some(existing) = merged_poly
-                .iter_mut()
-                .find(|e| e.hypercube == eval.hypercube)
-            {
-                existing.value = existing.value * (F::from(1u32) - values) + eval.value * values;
+            if let Some(existing) = merged_poly.iter_mut().find(|e| e.0 == eval.0) {
+                existing.1 = existing.1 * (F::from(1u32) - values) + eval.1 * values;
+                rep.push(existing.1);
             } else {
                 merged_poly.push(eval);
             }
         }
+        let (hypercube, eval_rep): (Vec<Vec<F>>, Vec<F>) = merged_poly.into_iter().unzip();
+
         EvaluationFormPolynomial {
-            representation: merged_poly,
+            representation: eval_rep,
+            hypercube,
         }
     }
 }
 #[derive(Debug, PartialEq, Clone)]
-struct MultilinearPolynomialSparse<F: PrimeField> {
+pub struct MultilinearPolynomialSparse<F: PrimeField> {
     polynomial: Vec<(F, Vec<F>)>,
 }
 impl<F: PrimeField> MultilinearPolynomialSparse<F> {
-    /// Creates a multilinear monomial.
-    ///
-    /// # Arguments
-    ///
-    /// * `coeff` - The coefficient of the monomial.
-    /// * `variables` - A vector of field elements representing the variables of the monomial.
-    ///
-    /// # Returns
-    ///
-    /// A tuple containing the coefficient and the variables of the monomial.
 
     pub fn multilinear_monomial(coeff: F, variables: Vec<F>) -> (F, Vec<F>) {
         let monomial: (F, Vec<F>) = (coeff, variables);
         return monomial;
     }
-    /// Creates a sparse multilinear polynomial.
-    ///
-    /// # Arguments
-    ///
-    /// * `monomial` - A vector of tuples where each tuple contains a coefficient and a vector of variables.
-    ///
-    /// # Returns
-    ///
-    /// A vector of tuples representing the sparse multilinear polynomial.
+
     pub fn new(self) -> Self {
         self
     }
-    /// Partially evaluates a sparse multilinear polynomial at a given position.
-    ///
-    /// # Arguments
-    ///
-    /// * `polyomial` - A vector of tuples representing the sparse multilinear polynomial.
-    /// * `values` - The value at which to evaluate the polynomial.
-    /// * `position` - The position at which to evaluate the polynomial.
-    ///
-    /// # Returns
-    ///
-    /// A vector of tuples representing the partially evaluated polynomial.
 
     pub fn evaluation(&mut self, values: F, position: usize) -> Self {
         let mut result = vec![];
@@ -180,15 +107,7 @@ impl<F: PrimeField> MultilinearPolynomialSparse<F> {
         }
         MultilinearPolynomialSparse { polynomial: result }
     }
-    /// Sums two sparse multilinear polynomials.
-    ///
-    /// # Arguments
-    ///
-    /// * `other` - Another `MultilinearPolynomialSparse` to be added.
-    ///
-    /// # Returns
-    ///
-    /// A new `MultilinearPolynomialSparse` representing the sum of the two polynomials.
+
     pub fn sum(&self, other: &Self) -> Self {
         let mut polynomial = self.polynomial.clone();
         let mut result = vec![];
@@ -204,15 +123,7 @@ impl<F: PrimeField> MultilinearPolynomialSparse<F> {
         MultilinearPolynomialSparse { polynomial: result }
     }
 }
-/// Generates the boolean hypercube for a given number of variables.
-///
-/// # Arguments
-///
-/// * `no_of_variables` - The number of variables.
-///
-/// # Returns
-///
-/// A vector of vectors representing the boolean hypercube.
+
 
 pub fn boolean_hypercube<F: PrimeField>(no_of_variables: usize) -> Vec<Vec<F>> {
     let length_of_hypercube = 2_usize.pow(no_of_variables as u32);
@@ -240,47 +151,22 @@ mod tests {
         let mut poly = EvaluationFormPolynomial::new(&values);
         assert_eq!(
             poly.representation,
+            vec![(Fq::from(0)), (Fq::from(2)), (Fq::from(0)), (Fq::from(5))]
+        );
+        assert_eq!(
+            poly.hypercube,
             vec![
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(0), Fq::from(0)],
-                    value: Fq::from(0)
-                },
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(0), Fq::from(1)],
-                    value: Fq::from(2)
-                },
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(1), Fq::from(0)],
-                    value: Fq::from(0)
-                },
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(1), Fq::from(1)],
-                    value: Fq::from(5)
-                }
+                (vec![Fq::from(0), Fq::from(0)]),
+                (vec![Fq::from(0), Fq::from(1)]),
+                (vec![Fq::from(1), Fq::from(0)]),
+                (vec![Fq::from(1), Fq::from(1)])
             ]
         );
         let mut pol = poly.partial_evaluate(Fq::from(5), 0);
-        assert_eq!(
-            pol.representation,
-            vec![
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(0)],
-                    value: Fq::from(0)
-                },
-                EvaluationFormMonomial {
-                    hypercube: vec![Fq::from(1)],
-                    value: Fq::from(17)
-                }
-            ]
-        );
+        assert_eq!(pol.representation, vec![(Fq::from(0)), (Fq::from(17))]);
+
         let result = pol.partial_evaluate(Fq::from(2), 0);
-        assert_eq!(
-            result.representation,
-            vec![EvaluationFormMonomial {
-                hypercube: vec![],
-                value: Fq::from(34)
-            }]
-        );
+        assert_eq!(result.representation, vec![Fq::from(34)]);
     }
 
     #[test]
