@@ -3,7 +3,7 @@ use evaluation_form_poly::EvaluationFormPolynomial;
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
 use sha3::{Digest, Sha3_256};
-fn verify<F: PrimeField>(transcript_vec: Vec<F>, mut claimed_sum: F, uni_poly: Vec<Vec<F>>) {
+fn verify<F: PrimeField>(transcript_vec: Vec<F>, mut claimed_sum: F, uni_poly: Vec<Vec<F>>) -> F {  
     let mut uni_polynomial: EvaluationFormPolynomial<F> =
         EvaluationFormPolynomial::new(&uni_poly[0]);
     assert_eq!(
@@ -23,6 +23,7 @@ fn verify<F: PrimeField>(transcript_vec: Vec<F>, mut claimed_sum: F, uni_poly: V
             .representation[0];
     }
     println!("claimed_sum {:?}", claimed_sum);
+    claimed_sum
 }
 fn proof<F: PrimeField>(init_polynomial: &Vec<F>, claimed_sum: F) -> (Vec<F>, (F, Vec<Vec<F>>)) {
     let mut unipoly_vec = vec![];
