@@ -20,13 +20,13 @@ impl<K: Digest + Clone, F: PrimeField> FiatShamir<K, F> {
        self.hash_function.update(input);
     
     }
-   pub fn squeeze(&self) -> F{
+    pub fn squeeze(&mut self) -> F{
         let result = self.hash_function.clone().finalize();
 
         let result_bytes: Vec<u8> = result.to_vec();
-        println!(" result_bytes{:?}", &result_bytes);
+        self.absorb(&result_bytes);
+    
         let result_field = F::from_le_bytes_mod_order(&result_bytes);
-          println!(" result_field{:?}", &result_field);
         result_field
     }
 }

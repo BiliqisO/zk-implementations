@@ -3,6 +3,7 @@ use evaluation_form_poly::EvaluationFormPolynomial;
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
 use sha3::{Digest, Sha3_256};
+
 fn verify<F: PrimeField>(init_polynomial: &Vec<F>, mut claimed_sum: F, uni_poly: Vec<Vec<F>>) -> F {
     let mut uni_polynomial: EvaluationFormPolynomial<F> =
         EvaluationFormPolynomial::new(&uni_poly[0]);
@@ -29,25 +30,33 @@ fn verify<F: PrimeField>(init_polynomial: &Vec<F>, mut claimed_sum: F, uni_poly:
         .map(|b| b as u8)
         .collect();
     fiat_shamir.absorb(&claimed_sum_bytes);
-    let mut challenge: F = fiat_shamir.squeeze();
+    // let mut challenge: F = fiat_shamir.squeeze();
+    // println!("challenge13 {:?}", challenge);
+    //   let mut challenge: F = fiat_shamir.squeeze();
+    // println!("challenge11 {:?}", challenge);
+    let mut init_poly = EvaluationFormPolynomial::new(&init_polynomial);    
+
 
     for i in 0..uni_poly.len() {
-        // uni_polynomial = EvaluationFormPolynomial::new(&uni_poly[i]);
+        
         fiat_shamir.absorb(
             &uni_poly[i]
                 .iter()
                 .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
                 .collect::<Vec<u8>>(),
         );
-        challenge = fiat_shamir.squeeze();
+        
+       let challenge = fiat_shamir.squeeze();
+        //  println!("challenge {:?}", challenge);
         claimed_sum = uni_polynomial.partial_evaluate(challenge, 0).representation[0];
-        let iop_check = uni_polynomial.partial_evaluate(challenge, 0);
-        assert_eq!(iop_check.representation[0], claimed_sum);
+         init_poly = init_poly.partial_evaluate(challenge, 0);
+      
     }
-
+  assert_eq!(init_poly.representation[0], claimed_sum);
     println!("claimed_sum {:?}", claimed_sum);
     claimed_sum
 }
+
 fn proof<F: PrimeField>(init_polynomial: &Vec<F>, claimed_sum: F) -> (F, Vec<Vec<F>>) {
     let mut unipoly_vec = vec![];
     let no_of_variables = init_polynomial.len().ilog2() - 1;
