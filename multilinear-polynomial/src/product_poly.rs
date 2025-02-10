@@ -36,6 +36,17 @@ impl<F: PrimeField> ProductPolynomial<F> {
         }
         result
     }
+    fn degree(&self) -> usize {
+        let mut max_degree = 0;
+        for i in 0..self.polyomials.len() {
+            let poly = &self.polyomials[i];
+            let degree = poly.hypercube.len();
+            if degree > max_degree {
+                max_degree = degree;
+            }
+        }
+        max_degree
+    }   
 }
 #[cfg(test)]
 mod tests {
@@ -73,4 +84,16 @@ mod tests {
         let result = product.evaluate(vec![Fq::from(5), Fq::from(2)]);
         assert_eq!(result, Fq::from(56));
     }
+    #[test]
+    fn test_product_poly_degree() {
+        let values: Vec<Fq> = vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)];
+        let poly = EvaluationFormPolynomial::new(&values);
+        let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)];
+        let poly1 = EvaluationFormPolynomial::new(&values1);
+        let mut product = ProductPolynomial::new();
+        product.add_polynomial(poly);
+        product.add_polynomial(poly1);
+        let result = product.degree();
+        assert_eq!(result, 4);
+    }   
 }

@@ -52,7 +52,7 @@ fn verify<F: PrimeField>(init_polynomial: Vec<F>, mut claimed_sum: F, uni_poly: 
 
     assert_eq!(init_poly.representation[0], claimed_sum);
 
-    claimed_sum
+    claimed_sum     
 }
 
 fn proof<F: PrimeField>(mut init_polynomial: Vec<F>, claimed_sum: F) -> (F, Vec<Vec<F>>) {
@@ -119,6 +119,7 @@ fn proof_engine<F: PrimeField>(evaluation_form_vec: &Vec<F>) -> Vec<F> {
 mod tests {
     use super::*;
     use ark_bn254::Fq;
+    use evaluation_form_poly::product_poly::ProductPolynomial;
 
     #[test]
     fn test_sumcheck() {
@@ -132,7 +133,10 @@ mod tests {
             Fq::from(0),
             Fq::from(17),
         ];
-        let transcript = proof(values.clone(), Fq::from(29));
+        let poly = EvaluationFormPolynomial::new(&values);
+        let mut product = ProductPolynomial::new();
+        product.add_polynomial(poly);
+        let transcript = proof(product.polyomials[0].representation.clone(), Fq::from(29));
     
         verify(values, transcript.0, transcript.1);
     }
