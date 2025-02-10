@@ -1,24 +1,19 @@
 use ark_ff::PrimeField;
 use std::vec;
-
-
-#[derive( Debug, Clone, PartialEq)]
+pub mod product_poly;
+#[derive(Debug, Clone, PartialEq)]
 pub struct EvaluationFormPolynomial<F: PrimeField> {
     pub representation: Vec<F>,
     pub hypercube: Vec<Vec<F>>,
 }
 
 impl<F: PrimeField> EvaluationFormPolynomial<F> {
- 
-
     pub fn default() -> Self {
         EvaluationFormPolynomial {
             representation: vec![],
             hypercube: vec![],
         }
     }
-
-
 
     pub fn new(values: &Vec<F>) -> Self {
         // Check if the length of values is a power of 2
@@ -79,7 +74,6 @@ pub struct MultilinearPolynomialSparse<F: PrimeField> {
     polynomial: Vec<(F, Vec<F>)>,
 }
 impl<F: PrimeField> MultilinearPolynomialSparse<F> {
-
     pub fn multilinear_monomial(coeff: F, variables: Vec<F>) -> (F, Vec<F>) {
         let monomial: (F, Vec<F>) = (coeff, variables);
         return monomial;
@@ -123,7 +117,6 @@ impl<F: PrimeField> MultilinearPolynomialSparse<F> {
         MultilinearPolynomialSparse { polynomial: result }
     }
 }
-
 
 pub fn boolean_hypercube<F: PrimeField>(no_of_variables: usize) -> Vec<Vec<F>> {
     let length_of_hypercube = 2_usize.pow(no_of_variables as u32);
