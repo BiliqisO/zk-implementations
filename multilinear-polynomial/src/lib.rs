@@ -1,10 +1,13 @@
 use ark_ff::PrimeField;
 use std::vec;
+pub mod boolean_hypercube;
 pub mod product_poly;
+use boolean_hypercube::*;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct EvaluationFormPolynomial<F: PrimeField> {
     pub representation: Vec<F>,
-    pub hypercube: Vec<Vec<F>>,
+    pub hypercube: Vec<String>,
 }
 
 impl<F: PrimeField> EvaluationFormPolynomial<F> {
@@ -24,7 +27,7 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
 
         let value = values.len();
         let hypercube_size = value.ilog2();
-        let hypercube = boolean_hypercube(hypercube_size as usize);
+        let hypercube: Vec<String> = boolean_hypercube::<F>(hypercube_size as usize);
 
         let evaluation = EvaluationFormPolynomial::default();
         let mut data = evaluation.representation;
@@ -41,7 +44,7 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
     pub fn partial_evaluate(&mut self, values: F, position: usize) -> Self {
         let evaluation_form_vec = &self.representation;
         let self_vec_len = evaluation_form_vec.len();
-        let mut poly: Vec<(Vec<F>, F)> = Vec::new();
+        let mut poly: Vec<(String, F)> = Vec::new();
         let mut rep = Vec::new();
 
         for i in 0..self_vec_len {
@@ -51,7 +54,7 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
 
             poly.push((hypercube, evaluation_form_vec[i]));
         }
-        let mut merged_poly: Vec<(Vec<F>, F)> = vec![];
+        let mut merged_poly: Vec<(String, F)> = vec![];
 
         for eval in poly {
             if let Some(existing) = merged_poly.iter_mut().find(|e| e.0 == eval.0) {
@@ -61,7 +64,7 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
                 merged_poly.push(eval);
             }
         }
-        let (hypercube, eval_rep): (Vec<Vec<F>>, Vec<F>) = merged_poly.into_iter().unzip();
+        let (hypercube, eval_rep): (Vec<String>, Vec<F>) = merged_poly.into_iter().unzip();
 
         EvaluationFormPolynomial {
             representation: eval_rep,
@@ -118,21 +121,6 @@ impl<F: PrimeField> MultilinearPolynomialSparse<F> {
     }
 }
 
-pub fn boolean_hypercube<F: PrimeField>(no_of_variables: usize) -> Vec<Vec<F>> {
-    let length_of_hypercube = 2_usize.pow(no_of_variables as u32);
-
-    let mut result = vec![];
-
-    for i in 0..length_of_hypercube {
-        let mut term = vec![];
-        for j in (0..no_of_variables).rev() {
-            term.push(F::from(((i >> j) & 1usize) as u64));
-        }
-        result.push(term);
-    }
-
-    result
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,15 +134,7 @@ mod tests {
             poly.representation,
             vec![(Fq::from(0)), (Fq::from(2)), (Fq::from(0)), (Fq::from(5))]
         );
-        assert_eq!(
-            poly.hypercube,
-            vec![
-                (vec![Fq::from(0), Fq::from(0)]),
-                (vec![Fq::from(0), Fq::from(1)]),
-                (vec![Fq::from(1), Fq::from(0)]),
-                (vec![Fq::from(1), Fq::from(1)])
-            ]
-        );
+        assert_eq!(poly.hypercube, vec!["00", "01", "10", "11"]);
         let mut pol = poly.partial_evaluate(Fq::from(5), 0);
         assert_eq!(pol.representation, vec![(Fq::from(0)), (Fq::from(17))]);
 
@@ -162,21 +142,6 @@ mod tests {
         assert_eq!(result.representation, vec![Fq::from(34)]);
     }
 
-    #[test]
-    fn test_boolean_hypercube() {
-        let cube = boolean_hypercube::<Fq>(3);
-        let bh_3 = vec![
-            vec![Fq::from(0), Fq::from(0), Fq::from(0)],
-            vec![Fq::from(0), Fq::from(0), Fq::from(1)],
-            vec![Fq::from(0), Fq::from(1), Fq::from(0)],
-            vec![Fq::from(0), Fq::from(1), Fq::from(1)],
-            vec![Fq::from(1), Fq::from(0), Fq::from(0)],
-            vec![Fq::from(1), Fq::from(0), Fq::from(1)],
-            vec![Fq::from(1), Fq::from(1), Fq::from(0)],
-            vec![Fq::from(1), Fq::from(1), Fq::from(1)],
-        ];
-        assert_eq!(cube, bh_3);
-    }
     #[test]
     fn test_sparse_partial_evaluation() {
         let m_1 = MultilinearPolynomialSparse::multilinear_monomial(

@@ -27,8 +27,6 @@ impl<F: PrimeField> ProductPolynomial<F> {
             let mut poly = self.polyomials[i].clone();
             for j in 0..values.len() {
                 let value = values[j];
-                println!("Value: {:?}", value);
-                println!("J: {:?}", j);
                 poly = poly.partial_evaluate(value, 0);
             }
 
@@ -36,6 +34,30 @@ impl<F: PrimeField> ProductPolynomial<F> {
         }
         result
     }
+    pub fn same_vars_sum_poly(&mut self) -> EvaluationFormPolynomial<F> {
+        let mut result = EvaluationFormPolynomial::default();
+        for i in 0..self.polyomials[0].representation.len()  {
+            let poly = self.polyomials[0].representation[i] + self.polyomials[1].representation[i]; 
+        
+                result.representation.push(poly);
+            
+        }
+        result
+
+    }
+   pub fn sum_poly(mut self) -> EvaluationFormPolynomial<F> {
+        let mut result = EvaluationFormPolynomial::default();
+    
+        for i in 0..self.polyomials[0].representation.len() {
+            let first_poly = self.polyomials[0].representation[i];
+            for j in 0..self.polyomials[1].representation.len() {
+                let second_poly = first_poly + self.polyomials[1].representation[j];
+                result.representation.push(second_poly);
+            }
+        }
+        result
+    }
+
     fn degree(&self) -> usize {
         let mut max_degree = 0;
         for i in 0..self.polyomials.len() {
@@ -46,7 +68,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
             }
         }
         max_degree
-    }   
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -95,5 +117,44 @@ mod tests {
         product.add_polynomial(poly1);
         let result = product.degree();
         assert_eq!(result, 4);
-    }   
+    }
+    #[test]
+
+    fn test_sum_poly() {
+        let values: Vec<Fq> = vec![Fq::from(3), Fq::from(3), Fq::from(3), Fq::from(5)];
+        let poly = EvaluationFormPolynomial::new(&values);
+        let values1: Vec<Fq> = vec![Fq::from(6), Fq::from(8)];
+        let poly1 = EvaluationFormPolynomial::new(&values1);
+        let mut product = ProductPolynomial::new();
+        product.add_polynomial(poly);
+        product.add_polynomial(poly1);
+        let result = product.sum_poly();
+        assert_eq!(
+            result.representation,
+            vec![
+                Fq::from(9),
+                Fq::from(11),
+                Fq::from(9),
+                Fq::from(11),
+                Fq::from(11),
+                Fq::from(11),
+                Fq::from(13)
+            ]
+        );
+    }
+    #[test]
+    fn test_univariate_sum_poly() {
+        let values: Vec<Fq> = vec![Fq::from(24), Fq::from(36)];
+        let poly = EvaluationFormPolynomial::new(&values);
+        let values1: Vec<Fq> = vec![Fq::from(9), Fq::from(33)];
+        let poly1 = EvaluationFormPolynomial::new(&values1);
+        let mut product = ProductPolynomial::new();
+        product.add_polynomial(poly);
+        product.add_polynomial(poly1);
+        let result = product.same_vars_sum_poly();
+        assert_eq!(
+            result.representation,
+            vec![Fq::from(33), Fq::from(69)]
+        );
+    }       
 }

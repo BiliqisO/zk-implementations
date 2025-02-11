@@ -1,4 +1,4 @@
-use evaluation_form_poly::EvaluationFormPolynomial;
+use evaluation_form_poly::{product_poly::ProductPolynomial, EvaluationFormPolynomial};
 
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
@@ -52,53 +52,82 @@ fn verify<F: PrimeField>(init_polynomial: Vec<F>, mut claimed_sum: F, uni_poly: 
 
     assert_eq!(init_poly.representation[0], claimed_sum);
 
-    claimed_sum     
+    claimed_sum
 }
 
-fn proof<F: PrimeField>(mut init_polynomial: Vec<F>, claimed_sum: F) -> (F, Vec<Vec<F>>) {
-    let mut unipoly_vec = vec![];
-    let no_of_variables = init_polynomial.len().ilog2();
+fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> Vec<(F, Vec<Vec<F>>)> {
+    let init_poly_rep = init_poly.polyomials[0].representation;
+    let no_of_variables = init_poly_rep.len().ilog2();
 
-    let hash_function = Sha3_256::new();
-    let mut fiat_shamir = FiatShamir::new(hash_function);
-    let init_polynomial_bytes: Vec<u8> = init_polynomial
-        .iter()
-        .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
-        .collect();
-    fiat_shamir.absorb(&init_polynomial_bytes);
-    let claimed_sum_bytes: Vec<u8> = claimed_sum
-        .into_bigint()
-        .to_bits_be()
-        .into_iter()
-        .map(|b| b as u8)
-        .collect();
-    fiat_shamir.absorb(&claimed_sum_bytes);
+    init_poly.same_vars_sum_poly();
 
-    for _ in 0..no_of_variables {
-        let uni_polynomial_eval = proof_engine(&init_polynomial);
-        fiat_shamir.absorb(
-            &uni_polynomial_eval
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+    
+
+
+
+       let hash_function = Sha3_256::new();
+            let mut fiat_shamir = FiatShamir::new(hash_function);
+            let init_polynomial_bytes: Vec<u8> = init_polynomial
                 .iter()
-                .flat_map(|f: &F| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
-                .collect::<Vec<u8>>(),
-        );
-        let challenge = fiat_shamir.squeeze();
+                .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+                .collect();
+            fiat_shamir.absorb(&init_polynomial_bytes);
+            let claimed_sum_bytes: Vec<u8> = claimed_sum
+                .into_bigint()
+                .to_bits_be()
+                .into_iter()
+                .map(|b| b as u8)
+                .collect();
+            fiat_shamir.absorb(&claimed_sum_bytes);
 
-        let mut multilinear_poly = EvaluationFormPolynomial::new(&init_polynomial);
+    let result = init_poly
+        .iter()
+        .map(|mut init_polynomial| {
+            let mut unipoly_vec = vec![];
+         
 
-        let mut uni_polynomial = EvaluationFormPolynomial::new(&uni_polynomial_eval);
+            for _ in 0..no_of_variables {
+                let uni_polynomial_eval = proof_engine(&init_polynomial);
+                fiat_shamir.absorb(
+                    &uni_polynomial_eval
+                        .iter()
+                        .flat_map(|f: &F| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+                        .collect::<Vec<u8>>(),
+                );
+                let challenge = fiat_shamir.squeeze();
 
-        let verifier_sum: &F = &uni_polynomial.partial_evaluate(challenge, 0).representation[0];
+                let mut multilinear_poly = EvaluationFormPolynomial::new(&init_polynomial);
 
-        init_polynomial = multilinear_poly
-            .partial_evaluate(challenge, 0)
-            .representation;
+                let mut uni_polynomial = EvaluationFormPolynomial::new(&uni_polynomial_eval);
 
-        assert_eq!(init_polynomial.iter().copied().sum::<F>(), *verifier_sum);
-        unipoly_vec.push(uni_polynomial_eval.clone());
-    }
+                let verifier_sum: &F =
+                    &uni_polynomial.partial_evaluate(challenge, 0).representation[0];
+                let mp = multilinear_poly.partial_evaluate(challenge, 0);
 
-    (claimed_sum, unipoly_vec)
+                init_polynomial = multilinear_poly
+                    .partial_evaluate(challenge, 0)
+                    .representation;
+                assert_eq!(init_polynomial.iter().copied().sum::<F>(), *verifier_sum);
+                unipoly_vec.push(uni_polynomial_eval.clone());
+            }
+
+            (claimed_sum, unipoly_vec)
+        })
+        .collect::<Vec<(F, Vec<Vec<F>>)>>();
+    result
 }
 
 fn proof_engine<F: PrimeField>(evaluation_form_vec: &Vec<F>) -> Vec<F> {
@@ -137,7 +166,7 @@ mod tests {
         let mut product = ProductPolynomial::new();
         product.add_polynomial(poly);
         let transcript = proof(product.polyomials[0].representation.clone(), Fq::from(29));
-    
+
         verify(values, transcript.0, transcript.1);
     }
 }

@@ -108,9 +108,9 @@ impl<F: PrimeField> Circuit<F> {
                     // let fbc =
 
                     //this is valid but not in the right place
-                    // let w0  = Circuit::w_i(values.clone()).partial_evaluate(b, 0).representation;
-                    // let w1 = Circuit::w_i(values).partial_evaluate(c, 0).representation;
-                    // let w:Vec<F>  =     w0.iter().zip(w1.iter()).map(|(a, b)| *a + *b).collect();
+                    let w0  = Circuit::w_i(values.clone()).partial_evaluate(b, 0).representation;
+                    let w1 = Circuit::w_i(values).partial_evaluate(c, 0).representation;
+                    let w:Vec<F>  =     w0.iter().zip(w1.iter()).map(|(a, b)| *a + *b).collect();
                 }
 
                 Op::Mul => todo!(),
