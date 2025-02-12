@@ -1,6 +1,6 @@
 use crate::EvaluationFormPolynomial;
 use ark_ff::PrimeField;
-use std::vec;
+use std::{f32::consts::E, vec};
 
 pub struct ProductPolynomial<F: PrimeField> {
     pub polyomials: Vec<EvaluationFormPolynomial<F>>,
@@ -40,6 +40,14 @@ impl<F: PrimeField> ProductPolynomial<F> {
         result
     }
     pub fn same_vars_sum_poly(&mut self) -> EvaluationFormPolynomial<F> {
+        if self.polyomials.len() == 1{
+            return self.polyomials[0].clone();
+        } 
+        if self.polyomials.len() != 2 {
+            panic!("The number of polynomials should be 2");
+        }   else if self.polyomials[0].representation.len() != self.polyomials[1].representation.len() {
+            panic!("The number of monomials in the polynomials should be equal");
+        }
         let mut result = EvaluationFormPolynomial::default();
         for i in 0..self.polyomials[0].representation.len()  {
             let poly = self.polyomials[0].representation[i] + self.polyomials[1].representation[i]; 
