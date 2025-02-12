@@ -73,9 +73,10 @@ impl<F: PrimeField> ProductPolynomial<F> {
 
    pub fn degree(&self) -> usize {
         let mut max_degree = 0;
+
         for i in 0..self.polyomials.len() {
             let poly = &self.polyomials[i];
-            let degree = poly.hypercube.len();
+            let degree = poly.hypercube[0].len();
             if degree > max_degree {
                 max_degree = degree;
             }
