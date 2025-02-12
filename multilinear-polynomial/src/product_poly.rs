@@ -26,7 +26,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
         }
         result
     }
-    pub fn evaluate(&mut self, values: Vec<F>) -> F {
+    pub fn evaluate(self, values: Vec<F>) -> F {
         let mut result = F::from(0u32);
         for i in 0..self.polyomials.len() {
             let mut poly = self.polyomials[i].clone();
