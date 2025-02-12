@@ -61,10 +61,7 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
     let no_of_variables = init_poly_rep.len().ilog2();
 
    let summed_poly =  init_poly.same_vars_sum_poly();
-   let summed_poly=summed_poly.representation;
-
-
-
+   let mut summed_poly=summed_poly.representation;
 
 
 
@@ -83,15 +80,11 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
                 .collect();
             fiat_shamir.absorb(&claimed_sum_bytes);
 
-    // let result = init_poly.polyomials      
-    //     .iter()
-    //     .map(|mut init_polynomial| {
-            // let init_polynomial = init_poly;
             let mut unipoly_vec = vec![];
          
 
-            for i in 0..no_of_variables {
-                //refactor this tp be based on the degree
+            for _ in 0..no_of_variables {
+        
                 let uni_polynomial_eval = proof_engine(&summed_poly);
                 fiat_shamir.absorb(
                     &uni_polynomial_eval
@@ -103,6 +96,7 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
 
                 let mut multilinear_poly = ProductPolynomial::new();
                 multilinear_poly.add_polynomials(init_poly.polyomials);
+                 
 
                 let mut uni_polynomial = EvaluationFormPolynomial::new(&uni_polynomial_eval);
 
@@ -112,6 +106,9 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
 
                 init_poly = multilinear_poly
                     .partial_evaluate(challenge, 0);
+                
+                summed_poly =  init_poly.same_vars_sum_poly().representation;
+                println!("innit_poly   {:?}", init_poly.polyomials);
                 assert_eq!(init_poly.polyomials.iter().map(
                     |poly| poly.representation.iter().sum::<F>()
                 ).sum::<F>(), *verifier_sum);
@@ -119,9 +116,6 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
             }
 
             (claimed_sum, unipoly_vec)
-        // }
-    // )
-    //     .collect::<Vec<(F, Vec<Vec<F>>)>>();
   
 }
 
@@ -146,6 +140,7 @@ mod tests {
     use evaluation_form_poly::product_poly::ProductPolynomial;
 
     #[test]
+
     fn test_sumcheck() {
         let values: Vec<Fq> = vec![
             Fq::from(0),
