@@ -71,7 +71,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
         result
     }
 
-    fn degree(&self) -> usize {
+   pub fn degree(&self) -> usize {
         let mut max_degree = 0;
         for i in 0..self.polyomials.len() {
             let poly = &self.polyomials[i];
