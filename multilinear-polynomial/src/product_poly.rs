@@ -12,6 +12,11 @@ impl<F: PrimeField> ProductPolynomial<F> {
     pub fn add_polynomial(&mut self, poly: EvaluationFormPolynomial<F>) {
         self.polyomials.push(poly);
     }
+    pub fn add_polynomials(&mut self, polys: Vec<EvaluationFormPolynomial<F>>) {
+        for i in 0..polys.len() {
+            self.polyomials.push(polys[i].clone());
+        }
+    }
     pub fn partial_evaluate(&mut self, value: F, position: usize) -> Self {
         let mut result = ProductPolynomial::new();
         for i in 0..self.polyomials.len() {

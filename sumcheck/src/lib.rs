@@ -55,32 +55,22 @@ fn verify<F: PrimeField>(init_polynomial: Vec<F>, mut claimed_sum: F, uni_poly: 
     claimed_sum
 }
 
+//claimed sum and polynomilas already sent in eval form, 
 fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> Vec<(F, Vec<Vec<F>>)> {
     let init_poly_rep = init_poly.polyomials[0].representation;
     let no_of_variables = init_poly_rep.len().ilog2();
 
-    init_poly.same_vars_sum_poly();
+   let summed_poly =  init_poly.same_vars_sum_poly();
+   let summed_poly=summed_poly.representation;
 
 
 
-
-
-
-
-
-
-
-
-
-    
-    
-    
 
 
 
        let hash_function = Sha3_256::new();
             let mut fiat_shamir = FiatShamir::new(hash_function);
-            let init_polynomial_bytes: Vec<u8> = init_polynomial
+            let init_polynomial_bytes: Vec<u8> = summed_poly
                 .iter()
                 .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
                 .collect();
@@ -93,14 +83,16 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
                 .collect();
             fiat_shamir.absorb(&claimed_sum_bytes);
 
-    let result = init_poly
-        .iter()
-        .map(|mut init_polynomial| {
+    // let result = init_poly.polyomials      
+    //     .iter()
+    //     .map(|mut init_polynomial| {
+            let init_polynomial = init_polynomial.representation.clone();
             let mut unipoly_vec = vec![];
          
 
             for _ in 0..no_of_variables {
-                let uni_polynomial_eval = proof_engine(&init_polynomial);
+                //refactor this tp be based on the degree
+                let uni_polynomial_eval = proof_engine(&summed_poly);
                 fiat_shamir.absorb(
                     &uni_polynomial_eval
                         .iter()
@@ -109,13 +101,16 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
                 );
                 let challenge = fiat_shamir.squeeze();
 
-                let mut multilinear_poly = EvaluationFormPolynomial::new(&init_polynomial);
+                let mut multilinear_poly = ProductPolynomial::new();
+                multilinear_poly.add_polynomial(EvaluationFormPolynomial::new(&init_polynomial));
 
                 let mut uni_polynomial = EvaluationFormPolynomial::new(&uni_polynomial_eval);
 
                 let verifier_sum: &F =
                     &uni_polynomial.partial_evaluate(challenge, 0).representation[0];
-                let mp = multilinear_poly.partial_evaluate(challenge, 0);
+
+
+          
 
                 init_polynomial = multilinear_poly
                     .partial_evaluate(challenge, 0)
@@ -124,9 +119,10 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
                 unipoly_vec.push(uni_polynomial_eval.clone());
             }
 
-            (claimed_sum, unipoly_vec)
-        })
-        .collect::<Vec<(F, Vec<Vec<F>>)>>();
+            (claimed_sum, unipoly_vec);
+        // }
+    // )
+    //     .collect::<Vec<(F, Vec<Vec<F>>)>>();
     result
 }
 
