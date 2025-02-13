@@ -1,3 +1,5 @@
+use std::f32::consts::E;
+
 use evaluation_form_poly::{product_poly::ProductPolynomial, EvaluationFormPolynomial};
 
 use ark_ff::{BigInteger, PrimeField};
@@ -78,11 +80,10 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
         .collect();
     fiat_shamir.absorb(&claimed_sum_bytes);
 
-
     let mut unipoly_vec = vec![];
 
     for _ in 0..no_of_variables {
-        let uni_polynomial_eval = proof_engine(&init_poly);
+        let uni_polynomial_eval = proof_engine(&summed_poly);
         fiat_shamir.absorb(
             &uni_polynomial_eval
                 .iter()
@@ -116,19 +117,33 @@ fn proof<F: PrimeField>(mut init_poly: ProductPolynomial<F>, claimed_sum: F) -> 
     (claimed_sum, unipoly_vec)
 }
 
-fn proof_engine<F: PrimeField>( init_poly: ProductPolynomial<F>) -> Vec<F> {
-    let degree = init_poly.degree();    
-    // let mid = evaluation_form_vec.len() / 2;
-    // let first_half_sum: F = evaluation_form_vec[..mid]
-    //     .iter()
-    //     .map(|monomial| monomial)
-    //     .sum();
-    // let second_half_sum: F = evaluation_form_vec[mid..]
-    //     .iter()
-    //     .map(|monomial| monomial)
-    //     .sum();
-    // let univariate_polynomial: Vec<F> = vec![first_half_sum, second_half_sum];
-    // univariate_polynomial
+fn proof_engine<F: PrimeField>(evaluation_form_vec: &Vec<F>) -> Vec<F> {
+    let mut init_poly = ProductPolynomial::new();
+    init_poly.add_polynomial(EvaluationFormPolynomial::new(evaluation_form_vec));
+    let degree = init_poly.degree() + 1;
+
+    let mid = evaluation_form_vec.len() / 2;
+    let first_half_sum: F = evaluation_form_vec[..mid]
+        .iter()
+        .map(|monomial| monomial)
+        .sum();
+    let second_half_sum: F = evaluation_form_vec[mid..]
+        .iter()
+        .map(|monomial| monomial)
+        .sum();
+    let mut univariate_polynomial: Vec<F> = vec![first_half_sum, second_half_sum];
+
+    let mut res_vec = vec![];
+    for i in 0..degree {
+        let mut uni_poly = ProductPolynomial::new();
+        uni_poly.add_polynomial(EvaluationFormPolynomial::new(&univariate_polynomial));
+
+        let res = uni_poly.evaluate([F::from(i as u32)].to_vec());
+
+        res_vec.push(res);
+    }
+
+    res_vec
 }
 
 #[cfg(test)]
