@@ -19,21 +19,19 @@ impl<F: PrimeField> ProductPolynomial<F> {
             self.polyomials.push(polys[i].clone());
         }
     }
-    pub fn partial_evaluate(&mut self, value: F, position: usize) -> EvaluationFormPolynomial<F> {
-        let mut result = EvaluationFormPolynomial::default().representation;
+    pub fn partial_evaluate(&mut self, value: F, position: usize) -> ProductPolynomial<F> {
+        let mut result = ProductPolynomial::new();
         let mut  first_poly = self.polyomials[0].clone();
         let mut second_poly = self.polyomials[1].clone();
         let  poly = first_poly.partial_evaluate(value, position);
         let  poly1 = second_poly.partial_evaluate(value, position); 
-        for i in 0..poly.representation.len() { 
-         result.push(poly.representation[i] * poly1.representation[i]);
+        let poly_vec = vec![poly, poly1];
+    
+        result.add_polynomials(poly_vec);
+        result
+    
 
-        } 
-        println!("result: {:?}", result);
-        EvaluationFormPolynomial {
-            representation:  result,
-            ..first_poly
-        }
+    
     }
     pub fn evaluate(self, values: Vec<F>) -> F {
         let mut result = F::from(0u32);
@@ -45,6 +43,10 @@ impl<F: PrimeField> ProductPolynomial<F> {
             }
             result = result + poly.representation[0];
         }
+        //   for i in 0..poly.representation.len() { 
+        //  result.push(poly.representation[i] * poly1.representation[i]);
+
+        // } 
         result
     }
     pub fn same_vars_sum_poly(&mut self) -> EvaluationFormPolynomial<F> {
@@ -102,25 +104,14 @@ mod tests {
         product.add_polynomial(poly1);
         let result = product.partial_evaluate(Fq::from(5), 0);
         assert_eq!(
-            result.representation,
-            vec![Fq::from(0), Fq::from(260)]
+            result.polyomials[0].representation,
+            vec![Fq::from(10), Fq::from(13)]
         );
-        let values: Vec<Fq> = vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)];
-        let poly = EvaluationFormPolynomial::new(&values);
-        let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)];
-        let poly1 = EvaluationFormPolynomial::new(&values1);
-        let mut product = ProductPolynomial::new();
-        product.add_polynomial(poly);
-        product.add_polynomial(poly1);
-        let result = product.partial_evaluate(Fq::from(5), 0);
         assert_eq!(
-            result.representation,
-            vec![Fq::from(0), Fq::from(260)]
+            result.polyomials[1].representation,
+            vec![Fq::from(0), Fq::from(20)]
         );
-        // assert_eq!(
-        //     result.representation,
-        //     vec![Fq::from(0), Fq::from(20)]
-        // );
+       
     }
     #[test]
     fn test_product_poly_evaluate() {
