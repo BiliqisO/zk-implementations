@@ -1,7 +1,9 @@
 use crate::EvaluationFormPolynomial;
 use ark_ff::PrimeField;
 use std::{f32::consts::E, vec};
-
+pub struct SumPolynomial<F: PrimeField> {
+    pub polyomials: Vec<EvaluationFormPolynomial<F>>,
+}
 pub struct ProductPolynomial<F: PrimeField> {
     pub polyomials: Vec<EvaluationFormPolynomial<F>>,
 }
@@ -17,14 +19,21 @@ impl<F: PrimeField> ProductPolynomial<F> {
             self.polyomials.push(polys[i].clone());
         }
     }
-    pub fn partial_evaluate(&mut self, value: F, position: usize) -> Self {
-        let mut result = ProductPolynomial::new();
-        for i in 0..self.polyomials.len() {
-            let mut poly = self.polyomials[i].clone();
-            poly = poly.partial_evaluate(value, position);
-            result.add_polynomial(poly);
+    pub fn partial_evaluate(&mut self, value: F, position: usize) -> EvaluationFormPolynomial<F> {
+        let mut result = EvaluationFormPolynomial::default().representation;
+        let mut  first_poly = self.polyomials[0].clone();
+        let mut second_poly = self.polyomials[1].clone();
+        let  poly = first_poly.partial_evaluate(value, position);
+        let  poly1 = second_poly.partial_evaluate(value, position); 
+        for i in 0..poly.representation.len() { 
+         result.push(poly.representation[i] * poly1.representation[i]);
+
+        } 
+        println!("result: {:?}", result);
+        EvaluationFormPolynomial {
+            representation:  result,
+            ..first_poly
         }
-        result
     }
     pub fn evaluate(self, values: Vec<F>) -> F {
         let mut result = F::from(0u32);
@@ -34,7 +43,6 @@ impl<F: PrimeField> ProductPolynomial<F> {
                 let value = values[j];
                 poly = poly.partial_evaluate(value, 0);
             }
-
             result = result + poly.representation[0];
         }
         result
@@ -72,16 +80,10 @@ impl<F: PrimeField> ProductPolynomial<F> {
     }
 
    pub fn degree(&self) -> usize {
-        let mut max_degree = 0;
+        let  degree = self.polyomials.len();
+        degree
 
-        for i in 0..self.polyomials.len() {
-            let poly = &self.polyomials[i];
-            let degree = poly.hypercube[0].len();
-            if degree > max_degree {
-                max_degree = degree;
-            }
-        }
-        max_degree
+     
     }
 }
 #[cfg(test)]
@@ -100,13 +102,25 @@ mod tests {
         product.add_polynomial(poly1);
         let result = product.partial_evaluate(Fq::from(5), 0);
         assert_eq!(
-            result.polyomials[0].representation,
-            vec![Fq::from(10), Fq::from(13)]
+            result.representation,
+            vec![Fq::from(0), Fq::from(260)]
         );
+        let values: Vec<Fq> = vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)];
+        let poly = EvaluationFormPolynomial::new(&values);
+        let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)];
+        let poly1 = EvaluationFormPolynomial::new(&values1);
+        let mut product = ProductPolynomial::new();
+        product.add_polynomial(poly);
+        product.add_polynomial(poly1);
+        let result = product.partial_evaluate(Fq::from(5), 0);
         assert_eq!(
-            result.polyomials[1].representation,
-            vec![Fq::from(0), Fq::from(20)]
+            result.representation,
+            vec![Fq::from(0), Fq::from(260)]
         );
+        // assert_eq!(
+        //     result.representation,
+        //     vec![Fq::from(0), Fq::from(20)]
+        // );
     }
     #[test]
     fn test_product_poly_evaluate() {
@@ -130,7 +144,7 @@ mod tests {
         product.add_polynomial(poly);
         product.add_polynomial(poly1);
         let result = product.degree();
-        assert_eq!(result, 4);
+        assert_eq!(result, 2);
     }
     #[test]
 
