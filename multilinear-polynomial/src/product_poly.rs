@@ -21,13 +21,11 @@ impl<F: PrimeField> ProductPolynomial<F> {
     }
     pub fn partial_evaluate(&mut self, value: F, position: usize) -> ProductPolynomial<F> {
         let mut result = ProductPolynomial::new();
-        let mut  first_poly = self.polyomials[0].clone();
-        let mut second_poly = self.polyomials[1].clone();
-        let  poly = first_poly.partial_evaluate(value, position);
-        let  poly1 = second_poly.partial_evaluate(value, position); 
-        let poly_vec = vec![poly, poly1];
-    
-        result.add_polynomials(poly_vec);
+            for i in 0..self.polyomials.len() {
+            let mut poly = self.polyomials[i].clone();
+            let poly = poly.partial_evaluate(value, position);
+            result.add_polynomial(poly);
+        }
         result
     
 
