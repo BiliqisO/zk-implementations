@@ -15,9 +15,11 @@ impl<F: PrimeField> SumPolynomial<F> {
     pub fn partial_evaluate(&self, value: F, position: usize) -> SumPolynomial<F> {
         let mut result = SumPolynomial::new(vec![]);
         for i in 0..self.polyomials.len() {
-            let mut poly = self.polyomials[i].clone();
+            let mut poly = self.polyomials[i].polyomials[i].clone();
+
             let poly = poly.partial_evaluate(value, position);
-            result.add_polynomial(poly);
+            let product_poly = ProductPolynomial::new(vec![poly]);
+            result.add_polynomial(product_poly);
         }
         result
     }
@@ -34,13 +36,27 @@ impl<F: PrimeField> SumPolynomial<F> {
         }
 
         let mut result = ProductPolynomial::new(vec![EvaluationFormPolynomial::default()]);
+        let mut result1 = ProductPolynomial::new(vec![EvaluationFormPolynomial::default()]);
+        let mut total_result = SumPolynomial::new(vec![ProductPolynomial::new(vec![
+            EvaluationFormPolynomial::default(),
+        ])]);
         for i in 0..self.polyomials[0].polyomials[0].representation.len() {
-            let eval = self.polyomials[0].polyomials[0].representation[i]
-                + self.polyomials[1].polyomials[0].representation[i];
+            let eval1 = self.polyomials[0].polyomials[0].representation[i]
+                * self.polyomials[0].polyomials[1].representation[i];
+            let eval2 = self.polyomials[1].polyomials[0].representation[i]
+                * self.polyomials[1].polyomials[1].representation[i];
 
-            result.polyomials[0].representation.push(eval);
+            result.polyomials[0].representation.push(eval1);
+            result1.polyomials[0].representation.push(eval2);
+
+            let total_eval =
+                result.polyomials[0].representation[i] + result1.polyomials[0].representation[i];
+            total_result.polyomials[0].polyomials[0]
+                .representation
+                .push(total_eval);
         }
-        SumPolynomial::new(vec![result])
+
+        total_result
     }
 }
 #[derive(Debug, Clone)]
@@ -133,25 +149,14 @@ mod tests {
         let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)];
         let poly1 = EvaluationFormPolynomial::new(&values1);
         let mut product = ProductPolynomial::new(vec![poly, poly1]);
-        let reduced_product1 = product.reduce();
-
-        assert_eq!(
-            reduced_product1.polyomials[0].representation,
-            vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(20)]
-        );
 
         let values2: Vec<Fq> = vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)];
         let poly2 = EvaluationFormPolynomial::new(&values2);
         let values3: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)];
         let poly3 = EvaluationFormPolynomial::new(&values3);
         let mut product1 = ProductPolynomial::new(vec![poly2, poly3]);
-        let reduced_product2 = product1.reduce();
 
-        assert_eq!(
-            reduced_product2.polyomials[0].representation,
-            vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(20)]
-        );
-        let sum = SumPolynomial::new(vec![reduced_product1, reduced_product2]);
+        let sum = SumPolynomial::new(vec![product, product1]);
 
         let result = sum.reduce();
         assert_eq!(
