@@ -14,13 +14,12 @@ impl<F: PrimeField> SumPolynomial<F> {
     }
     pub fn partial_evaluate(&self, value: F, position: usize) -> SumPolynomial<F> {
         let mut result = SumPolynomial::new(vec![]);
-        for i in 0..self.polyomials.len() {
-            let mut poly = self.polyomials[i].polyomials[i].clone();
+    for mut poly in self.polyomials.clone() {  
+    // Handle each ProductPolynomial's partial evaluation
+    let evaluated = poly.partial_evaluate(value, position);
+    result.add_polynomial(evaluated);
+}
 
-            let poly = poly.partial_evaluate(value, position);
-            let product_poly = ProductPolynomial::new(vec![poly]);
-            result.add_polynomial(product_poly);
-        }
         result
     }
     pub fn reduce(&self) -> SumPolynomial<F> {
@@ -183,13 +182,22 @@ mod tests {
         ]);
 
         let result = sum.partial_evaluate(Fq::from(5), 0);
+
         assert_eq!(
             result.polyomials[0].polyomials[0].representation,
             vec![Fq::from(10), Fq::from(13)]
         );
         assert_eq!(
             result.polyomials[0].polyomials[1].representation,
+            vec![Fq::from(0), Fq::from(20)]
+        );
+        assert_eq!(
+            result.polyomials[1].polyomials[0].representation,
             vec![Fq::from(10), Fq::from(13)]
+        );
+        assert_eq!(
+            result.polyomials[1].polyomials[1].representation,
+            vec![Fq::from(0), Fq::from(20)]
         );
     }
 
