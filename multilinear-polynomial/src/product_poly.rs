@@ -12,7 +12,11 @@ impl<F: PrimeField> SumPolynomial<F> {
     pub fn add_polynomial(&mut self, poly: ProductPolynomial<F>) {
         self.polyomials.push(poly);
     }
-
+    pub fn add_polynomials(&mut self, polys: Vec<ProductPolynomial<F>>) {
+        for i in 0..polys.len() {
+            self.polyomials.push(polys[i].clone());
+        }
+    }
     pub fn partial_evaluate(&self, value: F, position: usize) -> SumPolynomial<F> {
     let mut result = SumPolynomial::new(vec![]);
     for mut poly in self.polyomials.clone() {  
