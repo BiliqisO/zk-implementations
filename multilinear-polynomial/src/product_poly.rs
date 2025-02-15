@@ -24,38 +24,49 @@ impl<F: PrimeField> SumPolynomial<F> {
         result
     }
     pub fn reduce(&self) -> SumPolynomial<F> {
-        if self.polyomials.len() == 1 {
-            return self.clone();
-        }
-        if self.polyomials[0].polyomials[0].representation.len()
-            != self.polyomials[1].polyomials[0].representation.len()
-        {
-            panic!("The number of monomials in the polynomials should be equal");
-        }
-
-        let mut result = ProductPolynomial::new(vec![EvaluationFormPolynomial::default()]);
-        let mut result1 = ProductPolynomial::new(vec![EvaluationFormPolynomial::default()]);
-        let mut total_result = SumPolynomial::new(vec![ProductPolynomial::new(vec![
-            EvaluationFormPolynomial::default(),
-        ])]);
-        for i in 0..self.polyomials[0].polyomials[0].representation.len() {
-            let eval1 = self.polyomials[0].polyomials[0].representation[i]
-                * self.polyomials[0].polyomials[1].representation[i];
-            let eval2 = self.polyomials[1].polyomials[0].representation[i]
-                * self.polyomials[1].polyomials[1].representation[i];
-
-            result.polyomials[0].representation.push(eval1);
-            result1.polyomials[0].representation.push(eval2);
-
-            let total_eval =
-                result.polyomials[0].representation[i] + result1.polyomials[0].representation[i];
-            total_result.polyomials[0].polyomials[0]
-                .representation
-                .push(total_eval);
-        }
-
-        total_result
+    // If there's only one polynomial, return a clone
+    if self.polyomials.len() == 1 {
+        return self.clone();
     }
+
+    // Get the length of the first polynomial's representation to verify consistency
+    let expected_len = self.polyomials[0].polyomials[0].representation.len();
+
+    // Verify all polynomials have the same length
+    for product_poly in &self.polyomials {
+        if product_poly.polyomials[0].representation.len() != expected_len {
+            panic!("The number of monomials in all polynomials should be equal");
+        }
+    }
+
+    // Initialize the result with default values
+    let mut total_result = SumPolynomial::new(vec![ProductPolynomial::new(vec![
+        EvaluationFormPolynomial::default(),
+    ])]);
+
+    // For each position in the representation
+    for i in 0..expected_len {
+        // Initialize sum in the prime field
+        let mut sum = F::zero();
+
+        // Sum up the evaluations from all polynomials at this position
+        for product_poly in &self.polyomials {
+            // Perform multiplication in the prime field
+            let eval = product_poly.polyomials[0].representation[i]
+                .mul(&product_poly.polyomials[1].representation[i]);
+            // Add in the prime field
+            sum = sum.add(&eval);
+        }
+
+        // Add the sum to the result
+        total_result.polyomials[0].polyomials[0]
+            .representation
+            .push(sum);
+    }
+
+    total_result
+}
+  
 }
 #[derive(Debug, Clone)]
 pub struct ProductPolynomial<F: PrimeField> {
