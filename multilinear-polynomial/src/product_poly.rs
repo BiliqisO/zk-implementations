@@ -12,8 +12,9 @@ impl<F: PrimeField> SumPolynomial<F> {
     pub fn add_polynomial(&mut self, poly: ProductPolynomial<F>) {
         self.polyomials.push(poly);
     }
+
     pub fn partial_evaluate(&self, value: F, position: usize) -> SumPolynomial<F> {
-        let mut result = SumPolynomial::new(vec![]);
+    let mut result = SumPolynomial::new(vec![]);
     for mut poly in self.polyomials.clone() {  
     // Handle each ProductPolynomial's partial evaluation
     let evaluated = poly.partial_evaluate(value, position);
@@ -26,9 +27,7 @@ impl<F: PrimeField> SumPolynomial<F> {
         if self.polyomials.len() == 1 {
             return self.clone();
         }
-        if self.polyomials.len() != 2 {
-            panic!("The number of polynomials should be 2");
-        } else if self.polyomials[0].polyomials[0].representation.len()
+        if self.polyomials[0].polyomials[0].representation.len()
             != self.polyomials[1].polyomials[0].representation.len()
         {
             panic!("The number of monomials in the polynomials should be equal");
