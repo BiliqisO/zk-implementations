@@ -145,6 +145,18 @@ impl<F: PrimeField> ProductPolynomial<F> {
         }
         ProductPolynomial::new(vec![result])
     }
+    pub fn mul_poly(self) -> ProductPolynomial<F>{
+        let mut result = EvaluationFormPolynomial::default();
+
+        for i in 0..self.polyomials[0].representation.len() {
+            let first_poly = self.polyomials[0].representation[i];
+            for j in 0..self.polyomials[1].representation.len() {
+                let second_poly = first_poly * self.polyomials[1].representation[j];
+                result.representation.push(second_poly);
+            }
+        }
+        ProductPolynomial::new(vec![result])
+    }
 
     pub fn degree(&self) -> usize {
         let degree = self.polyomials.len();
@@ -275,6 +287,31 @@ mod tests {
                 Fq::from(13)
             ]
         );
+    }
+    #[test]
+    fn test_mul_poly(){
+           let values: Vec<Fq> = vec![Fq::from(3), Fq::from(3), Fq::from(3), Fq::from(5)];
+        let poly = EvaluationFormPolynomial::new(&values);
+        let values1: Vec<Fq> = vec![Fq::from(6), Fq::from(8)];
+        let poly1 = EvaluationFormPolynomial::new(&values1);
+        let product = ProductPolynomial::new(vec![poly, poly1]);
+        let result = product.mul_poly();
+        assert_eq!(
+            result.polyomials[0].representation,
+            vec![
+                Fq::from(18),
+                Fq::from(24),
+                Fq::from(18),
+                Fq::from(24),
+                Fq::from(18),
+                Fq::from(24),
+                Fq::from(30),
+                Fq::from(40)
+            ]
+        );
+        
+        
+        
     }
     // #[test]
     // fn test_reduce_add() {
