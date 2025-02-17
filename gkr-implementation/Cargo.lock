@@ -271,7 +271,7 @@ dependencies = [
 [[package]]
 name = "multilinear-polynomial"
 version = "0.1.0"
-source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=productpoly#f097305da1de5618b3f2c29cde69478198ff7a0c"
+source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=productpoly#bc7ddcbbe18647317bf7df20fb7d4c847342418d"
 dependencies = [
  "ark-bn254",
  "ark-ff",
