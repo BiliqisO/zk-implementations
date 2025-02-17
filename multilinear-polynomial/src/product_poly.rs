@@ -115,7 +115,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
         result
     }
 
-    pub fn reduce(&mut self) -> ProductPolynomial<F> {
+    pub fn reduce(& self) -> ProductPolynomial<F> {
         if self.polyomials.len() == 1 {
             return self.clone();
         }

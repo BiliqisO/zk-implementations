@@ -46,23 +46,48 @@ impl<F: PrimeField> Circuit<F> {
     }
     //indices for this should be gotten from
     fn init_add_i(indices: Vec<F>) {}
-    fn mul_i(indices: Vec<F>, values: Vec<F>) -> F {
-        let mut res = F::from(0);
-        for i in 0..indices.len() {
-            if indices[i] == F::from(0) {
-                res = res * F::from(1) - values[i]
-            } else if indices[i] == F::from(1) {
-                res = res * values[i];
-            }
-        }
-        res
-    }
+    // fn mul_i(indices: Vec<F>, values: Vec<F>) -> F {
+
+      
+    // }
     fn w_i(values: Vec<F>) -> EvaluationFormPolynomial<F> {
         let poly = EvaluationFormPolynomial::new(&values);
         poly
     }
+  
 
-    fn generate_gate_indices_for_layer_i(self, layer: usize) -> Vec<Vec<String>> {
+    fn add_i_or_mul_i(&self, layer: usize) -> (Vec<u32>, Vec<u32>) {
+    // Extract layer information
+    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+    let indices = self.clone().generate_gate_indices_for_layer_i(layer);
+
+    // Compute the number of bits in an index (assuming all are the same length)
+    let num_bits = indices.first().map(|idx| idx.len()).unwrap_or(0);
+    let num_combinations = 2usize.pow(num_bits as u32); // 2^num_bits
+
+    // Initialize add_i and mul_i vectors with all zeros
+    let mut add_i_vec = vec![0; num_combinations];
+    let mut mul_i_vec = vec![0; num_combinations];
+
+    for (i, gate) in layers[layer].gates.iter().enumerate() {
+        // Convert gate index to a binary string and then to decimal
+        let binary_string = &indices[i]; // Convert ["001", "010"] -> "001010"
+        let decimal_value = usize::from_str_radix(&binary_string, 2).unwrap_or(0);
+
+        match gate.op {
+            Op::Add => add_i_vec[decimal_value] = 1, // Set the corresponding index
+            Op::Mul => mul_i_vec[decimal_value] = 1, // Same for mul_i
+            _ => continue, // Ignore other operations
+        }
+    }
+
+    println!("add_i_vec: {:?}", add_i_vec);
+    println!("mul_i_vec: {:?}", mul_i_vec);
+    (add_i_vec, mul_i_vec)
+}
+
+
+    fn generate_gate_indices_for_layer_i(self, layer: usize) -> Vec<String> {
         let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
 
         let outputs: Vec<F> = layers[layer].gates.iter().map(|gate| gate.output).collect();
@@ -80,7 +105,7 @@ impl<F: PrimeField> Circuit<F> {
             .map(|i| format!("{:0width$b}", i, width = layer + 1))
             .collect();
         println!("left_right_binary{:?}", left_right_binary);
-        let gate_indices: Vec<Vec<String>> = output_binary
+        let gate_indices: Vec<String> = output_binary
             .iter()
             .enumerate()
             .map(|(i, output)| {
@@ -88,10 +113,11 @@ impl<F: PrimeField> Circuit<F> {
                     output.clone(),
                     left_right_binary[i * 2].clone(),
                     left_right_binary[i * 2 + 1].clone(),
-                ]
+                ].join("")
             })
             .collect();
         println!("gate_indices{:?}", gate_indices);
+      
         gate_indices
     }
     //values is w for that layer
@@ -108,9 +134,9 @@ impl<F: PrimeField> Circuit<F> {
                     // let fbc =
 
                     //this is valid but not in the right place
-                    let w0  = Circuit::w_i(values.clone()).partial_evaluate(b, 0).representation;
-                    let w1 = Circuit::w_i(values).partial_evaluate(c, 0).representation;
-                    let w:Vec<F>  =     w0.iter().zip(w1.iter()).map(|(a, b)| *a + *b).collect();
+                    // let w0  = Circuit::w_i(values.clone()).partial_evaluate(b, 0).representation;
+                    // let w1 = Circuit::w_i(values).partial_evaluate(c, 0).representation;
+                    // let w:Vec<F>  =     w0.iter().zip(w1.iter()).map(|(a, b)| *a + *b).collect();
                 }
 
                 Op::Mul => todo!(),
@@ -159,6 +185,43 @@ mod tests {
     use super::*;
     use ark_bn254::Fq;
 
+    #[test]
+    fn test_add_i_or_mul_i(){
+        let left = Fq::from(1u64);
+        let right = Fq::from(2u64);
+        let gate1 = Gate::new(left, right, Op::Add);
+
+        let left = Fq::from(3u64);
+        let right = Fq::from(4u64);
+        let gate2 = Gate::new(left, right, Op::Mul);
+
+        let left = Fq::from(5u64);
+        let right = Fq::from(6u64);
+        let gate3 = Gate::new(left, right, Op::Add);
+
+        let left = Fq::from(7u64);
+        let right = Fq::from(8u64);
+        let gate4 = Gate::new(left, right, Op::Add);
+
+        let mut layer = Layer::new();
+        layer.add_gate(gate1);
+        layer.add_gate(gate2);
+        layer.add_gate(gate3);
+        layer.add_gate(gate4);
+
+        let mut circuit = Circuit::new();
+        circuit.add_layer((layer.clone()));
+
+        let layer1_output = layer.evaluate_layer(vec![Op::Add, Op::Add]);
+        circuit.add_layer((layer.clone()));
+        let layer2_output = layer.evaluate_layer(vec![Op::Add]);
+        circuit.add_layer((layer.clone()));
+
+        println!(" circuit{:?}", circuit);
+        let v = circuit.layers[0].clone();
+      
+        circuit.add_i_or_mul_i(1);
+    }
     #[test]
     fn test_gate() {
         let left = Fq::from(2u64);
