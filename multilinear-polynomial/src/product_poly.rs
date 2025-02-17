@@ -133,7 +133,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
         }
         ProductPolynomial::new(vec![result])
     }
-    pub fn sum_poly(self) -> EvaluationFormPolynomial<F> {
+    pub fn sum_poly(self) -> ProductPolynomial<F> {
         let mut result = EvaluationFormPolynomial::default();
 
         for i in 0..self.polyomials[0].representation.len() {
@@ -143,7 +143,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
                 result.representation.push(second_poly);
             }
         }
-        result
+        ProductPolynomial::new(vec![result])
     }
 
     pub fn degree(&self) -> usize {
@@ -263,12 +263,13 @@ mod tests {
         let product = ProductPolynomial::new(vec![poly, poly1]);
         let result = product.sum_poly();
         assert_eq!(
-            result.representation,
+            result.polyomials[0].representation,
             vec![
                 Fq::from(9),
                 Fq::from(11),
                 Fq::from(9),
                 Fq::from(11),
+                Fq::from(9),
                 Fq::from(11),
                 Fq::from(11),
                 Fq::from(13)
