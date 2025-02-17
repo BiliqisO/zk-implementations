@@ -1,7 +1,7 @@
 use std::ops::Index;
 
 use ark_ff::PrimeField;
-use evaluation_form_poly::EvaluationFormPolynomial;
+use evaluation_form_poly::{product_poly::{ProductPolynomial, SumPolynomial}, EvaluationFormPolynomial};
 fn main() {
     println!("Hello, world!");
 }
@@ -56,7 +56,7 @@ impl<F: PrimeField> Circuit<F> {
     }
   
 
-    fn add_i_or_mul_i(&self, layer: usize) -> (Vec<u32>, Vec<u32>) {
+    fn add_i_or_mul_i(&self, layer: usize) -> (Vec<F>, Vec<F>) {
     // Extract layer information
     let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
     let indices = self.clone().generate_gate_indices_for_layer_i(layer);
@@ -71,7 +71,7 @@ impl<F: PrimeField> Circuit<F> {
 
     for (i, gate) in layers[layer].gates.iter().enumerate() {
         // Convert gate index to a binary string and then to decimal
-        let binary_string = &indices[i]; // Convert ["001", "010"] -> "001010"
+        let binary_string = &indices[i]; 
         let decimal_value = usize::from_str_radix(&binary_string, 2).unwrap_or(0);
 
         match gate.op {
@@ -80,10 +80,41 @@ impl<F: PrimeField> Circuit<F> {
             _ => continue, // Ignore other operations
         }
     }
+    
 
     println!("add_i_vec: {:?}", add_i_vec);
     println!("mul_i_vec: {:?}", mul_i_vec);
-    (add_i_vec, mul_i_vec)
+    (add_i_vec.iter().map(|&x| F::from(x)).collect(), mul_i_vec.iter().map(|&x| F::from(x)).collect())
+}
+fn generate_fbc(self, layer:usize, r_s:Vec<F>){
+    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+    let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
+    let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
+
+
+    let w: Vec<F> = layers[layer]
+            .gates
+            .iter()
+            .flat_map(|gate| vec![gate.left, gate.right])
+            .collect();
+    let w_i = EvaluationFormPolynomial::new(&w);
+    let (add_i, mul_i) = self.add_i_or_mul_i(layer);
+
+    let w =  ProductPolynomial::new(vec![w_i, w_i]);
+    let w_add_bc = w.sum_poly();
+    let w_mul_bc = w.mul_poly();
+
+    let mut add_bc = EvaluationFormPolynomial::default();
+    let mut mul_bc = EvaluationFormPolynomial::default();
+    for i in 0..r_s.len(){
+        add_bc = add_i_poly.partial_evaluate(r_s[i], 0);
+        mul_bc = mul_i_poly.partial_evaluate(r_s[i], 0);
+        
+    }
+    let fbc =SumPolynomial::new(vec![ProductPolynomial::new(vec![w_add_bc, add_bc]), ProductPolynomial::new( vec![w_mul_bc, mul_bc])])
+    //continue from here 
+
+
 }
 
 
@@ -121,7 +152,7 @@ impl<F: PrimeField> Circuit<F> {
         gate_indices
     }
     //values is w for that layer
-    fn generate_fbc(self, i: usize, op: Op, b: F, c: F, values: Vec<F>) {
+    fn generate_fb(self, i: usize, op: Op, b: F, c: F, values: Vec<F>) {
         // let layer_op = self.layers
         // let layer_indices =
         // This should go out of this fuction
@@ -220,7 +251,7 @@ mod tests {
         println!(" circuit{:?}", circuit);
         let v = circuit.layers[0].clone();
       
-        circuit.add_i_or_mul_i(1);
+        circuit.add_i_or_mul_i(0);
     }
     #[test]
     fn test_gate() {
