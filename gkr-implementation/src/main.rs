@@ -1,7 +1,10 @@
 use std::ops::Index;
 
 use ark_ff::PrimeField;
-use evaluation_form_poly::{product_poly::{ProductPolynomial, SumPolynomial}, EvaluationFormPolynomial};
+use evaluation_form_poly::{
+    product_poly::{ProductPolynomial, SumPolynomial},
+    EvaluationFormPolynomial,
+};
 fn main() {
     println!("Hello, world!");
 }
@@ -48,75 +51,73 @@ impl<F: PrimeField> Circuit<F> {
     fn init_add_i(indices: Vec<F>) {}
     // fn mul_i(indices: Vec<F>, values: Vec<F>) -> F {
 
-      
     // }
     fn w_i(values: Vec<F>) -> EvaluationFormPolynomial<F> {
         let poly = EvaluationFormPolynomial::new(&values);
         poly
     }
-  
 
     fn add_i_or_mul_i(&self, layer: usize) -> (Vec<F>, Vec<F>) {
-    // Extract layer information
-    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
-    let indices = self.clone().generate_gate_indices_for_layer_i(layer);
+        // Extract layer information
+        let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+        let indices = self.clone().generate_gate_indices_for_layer_i(layer);
 
-    // Compute the number of bits in an index (assuming all are the same length)
-    let num_bits = indices.first().map(|idx| idx.len()).unwrap_or(0);
-    let num_combinations = 2usize.pow(num_bits as u32); // 2^num_bits
+        // Compute the number of bits in an index (assuming all are the same length)
+        let num_bits = indices.first().map(|idx| idx.len()).unwrap_or(0);
+        let num_combinations = 2usize.pow(num_bits as u32); // 2^num_bits
 
-    // Initialize add_i and mul_i vectors with all zeros
-    let mut add_i_vec = vec![0; num_combinations];
-    let mut mul_i_vec = vec![0; num_combinations];
+        // Initialize add_i and mul_i vectors with all zeros
+        let mut add_i_vec = vec![0; num_combinations];
+        let mut mul_i_vec = vec![0; num_combinations];
 
-    for (i, gate) in layers[layer].gates.iter().enumerate() {
-        // Convert gate index to a binary string and then to decimal
-        let binary_string = &indices[i]; 
-        let decimal_value = usize::from_str_radix(&binary_string, 2).unwrap_or(0);
+        for (i, gate) in layers[layer].gates.iter().enumerate() {
+            // Convert gate index to a binary string and then to decimal
+            let binary_string = &indices[i];
+            let decimal_value = usize::from_str_radix(&binary_string, 2).unwrap_or(0);
 
-        match gate.op {
-            Op::Add => add_i_vec[decimal_value] = 1, // Set the corresponding index
-            Op::Mul => mul_i_vec[decimal_value] = 1, // Same for mul_i
-            _ => continue, // Ignore other operations
+            match gate.op {
+                Op::Add => add_i_vec[decimal_value] = 1, // Set the corresponding index
+                Op::Mul => mul_i_vec[decimal_value] = 1, // Same for mul_i
+                _ => continue,                           // Ignore other operations
+            }
         }
+
+        println!("add_i_vec: {:?}", add_i_vec);
+        println!("mul_i_vec: {:?}", mul_i_vec);
+        (
+            add_i_vec.iter().map(|&x| F::from(x)).collect(),
+            mul_i_vec.iter().map(|&x| F::from(x)).collect(),
+        )
     }
-    
+    fn generate_fbc(self, layer: usize, r_s: Vec<F>) {
+        let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+        let (add_i, mul_i) = self.add_i_or_mul_i(layer);
+        let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
+        let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
 
-    println!("add_i_vec: {:?}", add_i_vec);
-    println!("mul_i_vec: {:?}", mul_i_vec);
-    (add_i_vec.iter().map(|&x| F::from(x)).collect(), mul_i_vec.iter().map(|&x| F::from(x)).collect())
-}
-fn generate_fbc(self, layer:usize, r_s:Vec<F>){
-    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
-    let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
-    let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
-
-
-    let w: Vec<F> = layers[layer]
+        let w: Vec<F> = layers[layer]
             .gates
             .iter()
             .flat_map(|gate| vec![gate.left, gate.right])
             .collect();
-    let w_i = EvaluationFormPolynomial::new(&w);
-    let (add_i, mul_i) = self.add_i_or_mul_i(layer);
+        let w_i = EvaluationFormPolynomial::new(&w);
 
-    let w =  ProductPolynomial::new(vec![w_i, w_i]);
-    let w_add_bc = w.sum_poly();
-    let w_mul_bc = w.mul_poly();
+        let w = ProductPolynomial::new(vec![w_i.clone(), w_i.clone()]);
+        let w_add_bc: EvaluationFormPolynomial<F> = w.sum_poly();
+        let w_mul_bc: EvaluationFormPolynomial<F> = w.mul_poly();
 
-    let mut add_bc = EvaluationFormPolynomial::default();
-    let mut mul_bc = EvaluationFormPolynomial::default();
-    for i in 0..r_s.len(){
-        add_bc = add_i_poly.partial_evaluate(r_s[i], 0);
-        mul_bc = mul_i_poly.partial_evaluate(r_s[i], 0);
-        
+        let mut add_bc = EvaluationFormPolynomial::default();
+        let mut mul_bc = EvaluationFormPolynomial::default();
+        for i in 0..r_s.len() {
+            add_bc = add_i_poly.partial_evaluate(r_s[i], 0);
+            mul_bc = mul_i_poly.partial_evaluate(r_s[i], 0);
+        }
+        let fbc = SumPolynomial::new(vec![
+            ProductPolynomial::new(vec![w_add_bc, add_bc]),
+            ProductPolynomial::new(vec![w_mul_bc, mul_bc]),
+        ]);
+        println!("fbc {:?}", fbc);
     }
-    let fbc =SumPolynomial::new(vec![ProductPolynomial::new(vec![w_add_bc, add_bc]), ProductPolynomial::new( vec![w_mul_bc, mul_bc])])
-    //continue from here 
-
-
-}
-
 
     fn generate_gate_indices_for_layer_i(self, layer: usize) -> Vec<String> {
         let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
@@ -144,11 +145,12 @@ fn generate_fbc(self, layer:usize, r_s:Vec<F>){
                     output.clone(),
                     left_right_binary[i * 2].clone(),
                     left_right_binary[i * 2 + 1].clone(),
-                ].join("")
+                ]
+                .join("")
             })
             .collect();
         println!("gate_indices{:?}", gate_indices);
-      
+
         gate_indices
     }
     //values is w for that layer
@@ -217,7 +219,7 @@ mod tests {
     use ark_bn254::Fq;
 
     #[test]
-    fn test_add_i_or_mul_i(){
+    fn test_add_i_or_mul_i() {
         let left = Fq::from(1u64);
         let right = Fq::from(2u64);
         let gate1 = Gate::new(left, right, Op::Add);
@@ -250,8 +252,9 @@ mod tests {
 
         println!(" circuit{:?}", circuit);
         let v = circuit.layers[0].clone();
-      
+
         circuit.add_i_or_mul_i(0);
+        circuit.generate_fbc(1, vec![Fq::from(2), Fq::from(5)]);
     }
     #[test]
     fn test_gate() {
