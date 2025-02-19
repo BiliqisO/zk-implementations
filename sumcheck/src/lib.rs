@@ -9,7 +9,7 @@ use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
 use sha3::{digest::typenum::Sum, Digest, Sha3_256};
 
-fn verify<F: PrimeField>(
+pub fn verify<F: PrimeField>(
     mut init_poly: SumPolynomial<F>,
     mut claimed_sum: F,
     mut uni_poly: Vec<Vec<F>>,
@@ -78,7 +78,7 @@ fn verify<F: PrimeField>(
     claimed_sum
 }
 
-fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> (F, Vec<Vec<F>>) {
+pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> (F, Vec<Vec<F>>) {
     let init_poly_rep = &init_poly.polyomials[0].polyomials[0].representation;
     let no_of_variables = init_poly_rep.len().ilog2();
 
