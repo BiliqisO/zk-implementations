@@ -1,6 +1,7 @@
 use std::ops::Index;
-
-use ark_ff::PrimeField;
+use fiat_shamir::{self, FiatShamir};
+use sha3::{digest::typenum::Sum, Digest, Sha3_256};
+use ark_ff::{BigInteger, PrimeField};
 use evaluation_form_poly::{
     product_poly::{ProductPolynomial, SumPolynomial},
     EvaluationFormPolynomial,
@@ -86,25 +87,61 @@ impl<F: PrimeField> Circuit<F> {
         // println!("mul_i_vec: {:?}", mul_i_vec);
         (
             add_i_vec.iter().map(|&x| F::from(x)).collect(),
+
             mul_i_vec.iter().map(|&x| F::from(x)).collect(),
         )
     }
-    fn generate_fbc(self, layer: usize, r_s: Vec<F> ) {
-        let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
-        let (add_i, mul_i) = self.add_i_or_mul_i(layer);
-        let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
-        let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
-
-        let w: Vec<F> = layers[layer]
+    fn get_ws(&self, layer:usize) -> Vec<F>{
+          let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+          let w: Vec<F> = layers[layer]
             .gates
             .iter()
             .flat_map(|gate| vec![gate.left, gate.right])
             .collect();
+        w
 
+    }
+    fn proof(&self){
+    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+    let hash_function = Sha3_256::new();
+    let mut fiat_shamir: FiatShamir<sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>, F> =
+        FiatShamir::new(hash_function);
+        let mut m_o =    layers[0].gates.iter().map(|gate| gate.output).collect::<Vec<F>>();
+        m_o.push(F::from(0));
+    let m_o_bytes:Vec<u8> = m_o
+        .iter()
+        .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+        .collect(); 
+    
+       fiat_shamir.absorb(&m_o_bytes);
+       let r_1 = fiat_shamir.squeeze();
+       let  init_claim = EvaluationFormPolynomial::new(&m_o).partial_evaluate(r_1, 0).representation[0];
+    
+    let init_f_bc = self.generate_fbc(0,vec![r_1]);
+    println!("init_fbc  {:?}", init_f_bc);
+    let res =  sumcheck::proof(init_f_bc,init_claim );
+    println!("res  {:?}", res);
+
+    }
+    
+
+    fn generate_fbc(&self, layer: usize, r_s: Vec<F> ) -> SumPolynomial<F> {
+    let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+
+
+       
+        let (add_i, mul_i) = self.add_i_or_mul_i(layer);
+        let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
+        let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
+
+      
+        let w = self.get_ws(layer);
         let w_i = EvaluationFormPolynomial::new(&w);
 
         let w_bc = ProductPolynomial::new(vec![w_i.clone(), w_i.clone()]);
+  
         let w_add_bc: EvaluationFormPolynomial<F> = w_bc.sum_poly();
+              println!("w_bc  {:?}", w_add_bc);
         let w_mul_bc: EvaluationFormPolynomial<F> = w_bc.mul_poly();
 
 
@@ -117,6 +154,7 @@ impl<F: PrimeField> Circuit<F> {
             ProductPolynomial::new(vec![w_add_bc, add_i_poly]),
             ProductPolynomial::new(vec![w_mul_bc, mul_i_poly]),
         ]);
+        fbc
         // println!("fbc {:?}", fbc);
     }
 
@@ -154,6 +192,8 @@ impl<F: PrimeField> Circuit<F> {
 
         gate_indices
     }
+    
+    
     //values is w for that layer
     fn generate_fb(self, i: usize, op: Op, b: F, c: F, values: Vec<F>) {
         // let layer_op = self.layers
@@ -256,6 +296,7 @@ mod tests {
 
         circuit.add_i_or_mul_i(0);
         circuit.generate_fbc(1, vec![Fq::from(2), Fq::from(5)]);
+        circuit.proof();
     }
     #[test]
     fn test_gate() {

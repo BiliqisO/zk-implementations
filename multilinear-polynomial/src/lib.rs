@@ -41,6 +41,7 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
         }
     }
 
+    
     pub fn partial_evaluate(&mut self, values: F, position: usize) -> Self {
         let evaluation_form_vec = &self.representation;
         let self_vec_len = evaluation_form_vec.len();

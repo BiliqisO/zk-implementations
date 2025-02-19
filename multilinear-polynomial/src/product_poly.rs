@@ -134,7 +134,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
         ProductPolynomial::new(vec![result])
     }
     pub fn sum_poly(&self) -> EvaluationFormPolynomial<F> {
-        let mut result = EvaluationFormPolynomial::default();
+        let mut result: EvaluationFormPolynomial<F> = EvaluationFormPolynomial::new(&vec![]);
 
         for i in 0..self.polyomials[0].representation.len() {
             let first_poly = self.polyomials[0].representation[i];
@@ -146,7 +146,7 @@ impl<F: PrimeField> ProductPolynomial<F> {
      result
     }
     pub fn mul_poly(&self) -> EvaluationFormPolynomial<F>{
-        let mut result = EvaluationFormPolynomial::default();
+        let mut result =  EvaluationFormPolynomial::new(&vec![]);
 
         for i in 0..self.polyomials[0].representation.len() {
             let first_poly = self.polyomials[0].representation[i];

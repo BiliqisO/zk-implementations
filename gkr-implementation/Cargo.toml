@@ -6,5 +6,8 @@ edition = "2021"
 [dependencies]
 ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
+sha3 = "0.10.8"
 evaluation_form_poly = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "productpoly", package = "multilinear-polynomial" }
 
+fiat_shamir = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "main", package = "fiat-shamir-transformation" }
+sumcheck = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "main", package = "sumcheck" }
