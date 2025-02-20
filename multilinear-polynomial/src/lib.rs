@@ -1,6 +1,5 @@
 use ark_ff::PrimeField;
 use std::vec;
-use std::ops::{Index, Add};
 pub mod boolean_hypercube;
 pub mod product_poly;
 use boolean_hypercube::*;
@@ -10,17 +9,7 @@ pub struct EvaluationFormPolynomial<F: PrimeField> {
     pub representation: Vec<F>,
     pub hypercube: Vec<String>,
 }
-impl<F: PrimeField> Add for EvaluationFormPolynomial<F> {
-    type Output = Self;
 
-     fn add(self, other: Self) -> Self {
-        let mut result = self.clone();
-        for (i, coeff) in other.representation.iter().enumerate() {
-            result.representation[i] += coeff;
-        }
-        result
-    }
-}
 
 impl<F: PrimeField> EvaluationFormPolynomial<F> {
     pub fn default() -> Self {
@@ -28,6 +17,15 @@ impl<F: PrimeField> EvaluationFormPolynomial<F> {
             representation: vec![],
             hypercube: vec![],
         }
+    }
+
+    
+    pub fn add(&self, other: Self) -> Self {
+        let mut result = self.clone();
+        for (i, coeff) in other.representation.iter().enumerate() {
+            result.representation[i] += coeff;
+        }
+        result
     }
 
     pub fn new(values: &Vec<F>) -> Self {
@@ -138,14 +136,13 @@ impl<F: PrimeField> MultilinearPolynomialSparse<F> {
 mod tests {
     use super::*;
     use ark_bn254::Fq;
-     #[test]
+    #[test]
     fn test_add_polynomials(){
          let values: Vec<Fq> = vec![Fq::from(0), Fq::from(2), Fq::from(0), Fq::from(5)];
          let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(2), Fq::from(0), Fq::from(5)];
         let  poly = EvaluationFormPolynomial::new(&values);
         let  poly1 = EvaluationFormPolynomial::new(&values1);
-     
-      
+    
        let addition = poly.add(poly1);
          assert_eq!(
             addition.representation,
