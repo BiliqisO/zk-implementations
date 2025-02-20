@@ -1,8 +1,13 @@
-use std::ops::Index;
+mod gkr_sumcheck;
+use gkr_sumcheck as sumcheck;
+use ark_ff::Field;
+
+
 use multilinear_polynomial::{product_poly::{ProductPolynomial, SumPolynomial}, EvaluationFormPolynomial};
 use fiat_shamir::{self, FiatShamir};
 use sha3::{digest::typenum::Sum, Digest, Sha3_256};
 use ark_ff::{BigInteger, PrimeField};
+
 
 fn main() {
     println!("Hello, world!");
@@ -27,6 +32,8 @@ struct Layer<F: PrimeField> {
 struct Circuit<F: PrimeField> {
     layers: Vec<Layer<F>>,
 }
+
+
 
 impl<F: PrimeField> Circuit<F> {
     fn new() -> Self {
@@ -121,11 +128,54 @@ impl<F: PrimeField> Circuit<F> {
     let init_f_bc: SumPolynomial<F> = self.generate_fbc(0,vec![r_1]);
     println!("init_fbc  {:?}", init_f_bc);
 
-    let res =  sumcheck::proof(init_f_bc,init_claim);
+
     // println!("res  {:?}", res); 
 
+    for i in 0..layers.len() {
+        let(claimed_sum, random_challenges): (F, Vec<F>) =  sumcheck::proof(init_f_bc,init_claim);
+        let w = self.get_ws(i);
+        let w_i = EvaluationFormPolynomial::new(&w);
+
+        let (r_b, r_c) = random_challenges.split_at(random_challenges.len()/2);
+        let mut rng = ark_std::rand::thread_rng();
+        let alpha= F::rand(&mut rng);
+        let beta = F::rand(&mut rng);
+        let mut alpha_add_i = w_i.clone();
+        let mut alpha_mul_i = w_i.clone();
+        for &r_b_value in r_b {
+            alpha_add_i = alpha_add_i.partial_evaluate(r_b_value, 0);
+            alpha_mul_i = alpha_mul_i.partial_evaluate(r_b_value, 0);   
+        }
+        alpha_add_i.representation.iter_mut().for_each(|coeff| *coeff *= alpha);
+        alpha_mul_i.representation.iter_mut().for_each(|coeff| *coeff *= alpha);
+        let mut beta_add_i = w_i.clone();
+        let mut beta_mul_i = w_i.clone();
+        for &r_c_value in r_c {
+            beta_add_i = beta_add_i.partial_evaluate(r_c_value, 0);
+            beta_mul_i = beta_mul_i.partial_evaluate(r_c_value, 0);
+        }
+        beta_add_i.representation.iter_mut().for_each(|coeff| *coeff *= beta);
+        beta_mul_i.representation.iter_mut().for_each(|coeff| *coeff *= beta);
+
+        let new_add = alpha_add_i.add(&beta_add_i);
+        let new_mul =  ProductPolynomial::new(vec![alpha_mul_i, beta_mul_i]);
+        let w_b = w_i.clone();
+        let w_c = w_i.clone();
+
+        
+        let w_bc = ProductPolynomial::new(vec![w_b, w_c]);
+        let w_add_bc: EvaluationFormPolynomial<F> = w_bc.sum_poly();
+        let w_mul_bc: EvaluationFormPolynomial<F> = w_bc.mul_poly();
+        let fbc = SumPolynomial::new(vec![
+            ProductPolynomial::new(vec![w_add_bc, new_add]),
+            ProductPolynomial::new(vec![w_mul_bc, new_mul]),
+        ]);
+        
+
+
+
     }
-    
+}
 
     fn generate_fbc(&self, layer: usize, r_s: Vec<F> ) -> SumPolynomial<F> {
     let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
@@ -220,6 +270,7 @@ impl<F: PrimeField> Circuit<F> {
         }
     }
 }
+
 impl<F: PrimeField> Layer<F> {
     fn new() -> Self {
         Self { gates: Vec::new() }
