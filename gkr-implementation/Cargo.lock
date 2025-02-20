@@ -247,7 +247,7 @@ dependencies = [
 [[package]]
 name = "fiat-shamir-transformation"
 version = "0.1.0"
-source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#86b15d6496d30f5937fc270a5a9eefa6785d18bc"
+source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#27522eb63dbbe0a03f53e303b20724b33207cfbe"
 dependencies = [
  "ark-bn254",
  "ark-ff",
@@ -279,7 +279,6 @@ dependencies = [
  "ark-bn254",
  "ark-ff",
  "fiat-shamir-transformation",
- "multilinear-polynomial",
  "sha3",
  "sumcheck",
 ]
@@ -432,7 +431,7 @@ dependencies = [
 [[package]]
 name = "sumcheck"
 version = "0.1.0"
-source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#86b15d6496d30f5937fc270a5a9eefa6785d18bc"
+source = "git+https://github.com/BiliqisO/zk-implementations.git?branch=main#27522eb63dbbe0a03f53e303b20724b33207cfbe"
 dependencies = [
  "ark-bn254",
  "ark-ff",

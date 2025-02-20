@@ -1,11 +1,9 @@
 use std::ops::Index;
+use multilinear_polynomial::{product_poly::{ProductPolynomial, SumPolynomial}, EvaluationFormPolynomial};
 use fiat_shamir::{self, FiatShamir};
 use sha3::{digest::typenum::Sum, Digest, Sha3_256};
 use ark_ff::{BigInteger, PrimeField};
-use evaluation_form_poly::{
-    product_poly::{ProductPolynomial, SumPolynomial},
-    EvaluationFormPolynomial,
-};
+
 fn main() {
     println!("Hello, world!");
 }
@@ -47,6 +45,7 @@ impl<F: PrimeField> Circuit<F> {
             }
         }
         res
+
     }
     //indices for this should be gotten from
     fn init_add_i(indices: Vec<F>) {}
@@ -101,6 +100,7 @@ impl<F: PrimeField> Circuit<F> {
         w
 
     }
+
     fn proof(&self){
     let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
     let hash_function = Sha3_256::new();
@@ -114,13 +114,15 @@ impl<F: PrimeField> Circuit<F> {
         .collect(); 
     
        fiat_shamir.absorb(&m_o_bytes);
+
        let r_1 = fiat_shamir.squeeze();
        let  init_claim = EvaluationFormPolynomial::new(&m_o).partial_evaluate(r_1, 0).representation[0];
     
-    let init_f_bc = self.generate_fbc(0,vec![r_1]);
+    let init_f_bc: SumPolynomial<F> = self.generate_fbc(0,vec![r_1]);
     println!("init_fbc  {:?}", init_f_bc);
-    let res =  sumcheck::proof(init_f_bc,init_claim );
-    println!("res  {:?}", res);
+
+    let res =  sumcheck::proof(init_f_bc,init_claim);
+    // println!("res  {:?}", res); 
 
     }
     
@@ -141,7 +143,7 @@ impl<F: PrimeField> Circuit<F> {
         let w_bc = ProductPolynomial::new(vec![w_i.clone(), w_i.clone()]);
   
         let w_add_bc: EvaluationFormPolynomial<F> = w_bc.sum_poly();
-              println!("w_bc  {:?}", w_add_bc);
+        println!("w_bc  {:?}", w_add_bc);
         let w_mul_bc: EvaluationFormPolynomial<F> = w_bc.mul_poly();
 
 
