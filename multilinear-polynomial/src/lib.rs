@@ -13,7 +13,7 @@ pub struct EvaluationFormPolynomial<F: PrimeField> {
 impl<F: PrimeField> Add for EvaluationFormPolynomial<F> {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
+    pub fn add(self, other: Self) -> Self {
         let mut result = self.clone();
         for (i, coeff) in other.representation.iter().enumerate() {
             result.representation[i] += coeff;
