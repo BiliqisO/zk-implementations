@@ -7,7 +7,7 @@ edition = "2021"
 ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
 sha3 = "0.10.8"
+ark-std = "0.5.0"
 fiat_shamir = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "main", package = "fiat-shamir-transformation" }
 multilinear_polynomial = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "main", package = "multilinear-polynomial" }
 sumcheck = { git = "https://github.com/BiliqisO/zk-implementations.git", branch = "main", package = "sumcheck" }
-ark-std = "0.5.0"

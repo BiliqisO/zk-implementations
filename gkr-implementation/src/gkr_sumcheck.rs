@@ -53,7 +53,6 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
         let challenge = fiat_shamir.squeeze();
         challenge_vec.push(challenge);  
 
-
         let evaluation_polys: Vec<EvaluationFormPolynomial<F>> = init_poly
             .polyomials
             .iter()

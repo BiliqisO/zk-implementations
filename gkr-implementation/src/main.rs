@@ -9,6 +9,7 @@ use sha3::{digest::typenum::Sum, Digest, Sha3_256};
 use ark_ff::{BigInteger, PrimeField};
 
 
+
 fn main() {
     println!("Hello, world!");
 }
@@ -32,9 +33,6 @@ struct Layer<F: PrimeField> {
 struct Circuit<F: PrimeField> {
     layers: Vec<Layer<F>>,
 }
-
-
-
 impl<F: PrimeField> Circuit<F> {
     fn new() -> Self {
         Self { layers: vec![] }
@@ -156,7 +154,6 @@ impl<F: PrimeField> Circuit<F> {
         }
         beta_add_i.representation.iter_mut().for_each(|coeff| *coeff *= beta);
         beta_mul_i.representation.iter_mut().for_each(|coeff| *coeff *= beta);
-
         let new_add = alpha_add_i.add(&beta_add_i);
         let new_mul =  ProductPolynomial::new(vec![alpha_mul_i, beta_mul_i]);
         let w_b = w_i.clone();
