@@ -199,7 +199,7 @@ mod tests {
             EvaluationFormPolynomial::new(&values2),
             EvaluationFormPolynomial::new(&values3),
         ]);
-        let mut sum_poly = SumPolynomial::new(vec![poly, poly1]);
+        let mut sum_poly: SumPolynomial<ark_ff::Fp<ark_ff::MontBackend<ark_bn254::FqConfig, 4>, 4>> = SumPolynomial::new(vec![poly, poly1]);
     
         let transcript = proof(sum_poly.clone(), Fq::from(13));
         verify(sum_poly, transcript.0, transcript.1);
