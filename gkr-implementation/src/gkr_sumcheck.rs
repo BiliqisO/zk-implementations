@@ -37,7 +37,7 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
     fiat_shamir.absorb(&claimed_sum_bytes);
 
     let mut unipoly_vec = vec![];
-    let mut challenge_vec = vec![]; 
+    let mut challenge_vec = vec![];
 
     for _ in 0..no_of_variables {
         let mut uni_polynomial_eval = proof_engine(&init_poly);
@@ -51,7 +51,7 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
         );
         uni_polynomial_eval.pop().unwrap();
         let challenge = fiat_shamir.squeeze();
-        challenge_vec.push(challenge);  
+        challenge_vec.push(challenge);
 
         let evaluation_polys: Vec<EvaluationFormPolynomial<F>> = init_poly
             .polyomials
