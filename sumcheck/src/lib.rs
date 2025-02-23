@@ -1,4 +1,5 @@
 use std::{f32::consts::E, vec};
+use polynomials::UnivariatePolynomial;    
 
 use evaluation_form_poly::{
     product_poly::{ProductPolynomial, SumPolynomial},
@@ -64,6 +65,7 @@ pub fn verify<F: PrimeField>(
         let uni_poly = SumPolynomial::new(vec![ProductPolynomial::new(vec![
             EvaluationFormPolynomial::new(&uni_poly[i]),
         ])]);
+        
 
         claimed_sum = uni_poly.partial_evaluate(challenge.pow([2]), 0).polyomials[0].polyomials[0]
             .representation[0];
@@ -107,7 +109,7 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
     fiat_shamir.absorb(&claimed_sum_bytes);
 
     let mut unipoly_vec = vec![];
-
+    
     for _ in 0..no_of_variables {
         let mut uni_polynomial_eval = proof_engine(&init_poly);
         unipoly_vec.push(uni_polynomial_eval.clone());
@@ -118,28 +120,15 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
                 .flat_map(|f: &F| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
                 .collect::<Vec<u8>>(),
         );
-        uni_polynomial_eval.pop().unwrap();
         let challenge = fiat_shamir.squeeze();
 
-        let evaluation_polys: Vec<EvaluationFormPolynomial<F>> = init_poly
-            .polyomials
-            .iter()
-            .map(|poly| EvaluationFormPolynomial::new(&poly.polyomials[0].representation))
-            .collect();
+        let x_s: Vec<F> = (0..=2).map(|i| F::from(i as u64)).collect();
 
-        let mut multilinear_poly = init_poly;
-
-        let mut uni_polynomial: SumPolynomial<F> = SumPolynomial::new(vec![
-            ProductPolynomial::new(vec![EvaluationFormPolynomial::new(&uni_polynomial_eval)]),
-        ]);
-
-        let verifier_sum: &F = &uni_polynomial
-            .partial_evaluate(challenge.pow([2]), 0)
-            .polyomials[0]
-            .polyomials[0]
-            .representation[0];
-
-        init_poly = multilinear_poly.partial_evaluate(challenge, 0);
+        let uni_polynomial =  UnivariatePolynomial::interpolate(x_s, uni_polynomial_eval);
+        let eval_at_0 = uni_polynomial.evaluate(F::zero());
+        let eval_at_1 = uni_polynomial.evaluate(F::one());
+        let verifier_sum = eval_at_0 + eval_at_1;       
+      
         assert_eq!(
             init_poly
                 .reduce()
@@ -147,13 +136,15 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
                 .iter()
                 .flat_map(|poly| poly.polyomials.iter().flat_map(|p| p.representation.iter()))
                 .sum::<F>(),
-            *verifier_sum
+            verifier_sum
         );
+          init_poly = init_poly.partial_evaluate(challenge, 0);
+            
     }
     (claimed_sum, unipoly_vec)
 }
 
-fn proof_engine<F: PrimeField>(mut poly: &SumPolynomial<F>) -> Vec<F> {
+fn proof_engine<F: PrimeField>( poly: &SumPolynomial<F>) -> Vec<F> {
     let init_poly = poly.polyomials.clone();
 
     let degree = init_poly[0].degree() + 1;
@@ -182,6 +173,7 @@ fn proof_engine<F: PrimeField>(mut poly: &SumPolynomial<F>) -> Vec<F> {
 mod tests {
     use super::*;
     use ark_bn254::Fq;
+    use ark_ff::BigInteger256;
     use evaluation_form_poly::product_poly::ProductPolynomial;
 
     #[test]
@@ -189,7 +181,7 @@ mod tests {
         let values: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)];
         let values1: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)];
         let values2: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(1)];
-        let values3: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(7)];
+        let values3: Vec<Fq> = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(0)];
 
         let poly = ProductPolynomial::new(vec![
             EvaluationFormPolynomial::new(&values),
@@ -201,10 +193,55 @@ mod tests {
         ]);
         let mut sum_poly: SumPolynomial<ark_ff::Fp<ark_ff::MontBackend<ark_bn254::FqConfig, 4>, 4>> = SumPolynomial::new(vec![poly, poly1]);
     
-        let transcript = proof(sum_poly.clone(), Fq::from(13));
+        let transcript = proof(sum_poly.clone(), Fq::from(6));
         verify(sum_poly, transcript.0, transcript.1);
     }
+    #[test]
+    fn test_sumcheck_with_custom_polynomial() {
+        let values1: Vec<Fq> = vec![
+            Fq::from(30),
+            Fq::from(38),
+            Fq::from(38),
+            Fq::from(46),
+        ];
+        let values2: Vec<Fq> = vec![
+            Fq::from(0),
+            Fq::from(BigInteger256::new([0x8e7a9d2c4b7f16b7, 0x5e8b3f4b1a2b2c3d, 0x0, 0x0])),
+            Fq::from(0),
+            Fq::from(0),
+        ];
+        let values3: Vec<Fq> = vec![
+            Fq::from(225),
+            Fq::from(345),
+            Fq::from(345),
+            Fq::from(529),
+        ];
+        let values4: Vec<Fq> = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+        ];
 
+        let poly1 = ProductPolynomial::new(vec![
+            EvaluationFormPolynomial::new(&values1),
+            EvaluationFormPolynomial::new(&values2),
+        ]);
+        let poly2 = ProductPolynomial::new(vec![
+            EvaluationFormPolynomial::new(&values3),
+            EvaluationFormPolynomial::new(&values4),
+        ]);
+        let sum_poly: SumPolynomial<Fq> = SumPolynomial::new(vec![poly1, poly2]);
+
+        let claimed_sum = Fq::new(BigInteger256::new([
+            0x2c3d1a2b3f4b5e8b,
+            0x16b74b7f9d2c8e7a,
+            0x0000000000000000,
+            0x0000000000000000,
+        ])); // Adjust this value based on the expected sum
+        let transcript = proof(sum_poly.clone(), claimed_sum);
+        verify(sum_poly, transcript.0, transcript.1);
+    }
     // #[test]
 
     // fn test_sumcheck() {

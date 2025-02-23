@@ -4,6 +4,7 @@ use multilinear_polynomial::{
     product_poly::{ProductPolynomial, SumPolynomial},
     EvaluationFormPolynomial,
 };
+use polynomials::UnivariatePolynomial;   
 
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
@@ -37,8 +38,9 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
     fiat_shamir.absorb(&claimed_sum_bytes);
 
     let mut unipoly_vec = vec![];
-    let mut challenge_vec = vec![];
+        let mut challenge_vec = vec![];
 
+    
     for _ in 0..no_of_variables {
         let mut uni_polynomial_eval = proof_engine(&init_poly);
         unipoly_vec.push(uni_polynomial_eval.clone());
@@ -49,38 +51,27 @@ pub fn proof<F: PrimeField>(mut init_poly: SumPolynomial<F>, claimed_sum: F) -> 
                 .flat_map(|f: &F| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
                 .collect::<Vec<u8>>(),
         );
-        uni_polynomial_eval.pop().unwrap();
         let challenge = fiat_shamir.squeeze();
-        challenge_vec.push(challenge);
+            challenge_vec.push(challenge);
 
-        let evaluation_polys: Vec<EvaluationFormPolynomial<F>> = init_poly
-            .polyomials
-            .iter()
-            .map(|poly| EvaluationFormPolynomial::new(&poly.polyomials[0].representation))
-            .collect();
+        let x_s: Vec<F> = (0..=2).map(|i| F::from(i as u64)).collect();
 
-        let mut multilinear_poly = init_poly;
-
-        let mut uni_polynomial: SumPolynomial<F> = SumPolynomial::new(vec![
-            ProductPolynomial::new(vec![EvaluationFormPolynomial::new(&uni_polynomial_eval)]),
-        ]);
-
-        let verifier_sum: &F = &uni_polynomial
-            .partial_evaluate(challenge.pow([2]), 0)
-            .polyomials[0]
-            .polyomials[0]
-            .representation[0];
-
-        init_poly = multilinear_poly.partial_evaluate(challenge, 0);
-        // assert_eq!(
-        //     init_poly
-        //         .reduce()
-        //         .polyomials
-        //         .iter()
-        //         .flat_map(|poly| poly.polyomials.iter().flat_map(|p| p.representation.iter()))
-        //         .sum::<F>(),
-        //     *verifier_sum
-        // );
+        let uni_polynomial =  UnivariatePolynomial::interpolate(x_s, uni_polynomial_eval);
+        let eval_at_0 = uni_polynomial.evaluate(F::zero());
+        let eval_at_1 = uni_polynomial.evaluate(F::one());
+        let verifier_sum = eval_at_0 + eval_at_1;       
+      
+        assert_eq!(
+            init_poly
+                .reduce()
+                .polyomials
+                .iter()
+                .flat_map(|poly| poly.polyomials.iter().flat_map(|p| p.representation.iter()))
+                .sum::<F>(),
+            verifier_sum
+        );
+          init_poly = init_poly.partial_evaluate(challenge, 0);
+            
     }
     (claimed_sum, challenge_vec)
 }

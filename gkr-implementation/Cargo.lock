@@ -295,6 +295,7 @@ dependencies = [
  "rand",
  "sha3",
  "sumcheck",
+ "zkpolynomial",
 ]
 
 [[package]]
@@ -532,4 +533,12 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "zkpolynomial"
+version = "0.1.3"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
 ]
