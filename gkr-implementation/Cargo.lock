@@ -291,7 +291,7 @@ dependencies = [
  "ark-ff",
  "ark-std",
  "fiat-shamir-transformation",
- "multilinear-polynomial",
+ "multilinear-polynomial 0.1.0",
  "rand",
  "sha3",
  "sumcheck",
@@ -330,6 +330,14 @@ name = "libc"
 version = "0.2.169"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
+
+[[package]]
+name = "multilinear-polynomial"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
+]
 
 [[package]]
 name = "multilinear-polynomial"
@@ -455,7 +463,7 @@ dependencies = [
  "ark-bn254",
  "ark-ff",
  "fiat-shamir-transformation",
- "multilinear-polynomial",
+ "multilinear-polynomial 0.1.0 (git+https://github.com/BiliqisO/zk-implementations.git?branch=main)",
  "sha3",
 ]
 

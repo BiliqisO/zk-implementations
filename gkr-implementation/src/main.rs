@@ -2,13 +2,13 @@ mod gkr_sumcheck;
 use ark_ff::Field;
 use gkr_sumcheck as sumcheck;
 
-
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::{self, FiatShamir};
 use multilinear_polynomial::{
     product_poly::{ProductPolynomial, SumPolynomial},
     EvaluationFormPolynomial,
 };
+use polynomials::UnivariatePolynomial;
 use sha3::{digest::typenum::Sum, Digest, Sha3_256};
 use std::ops::Add;
 
@@ -32,6 +32,12 @@ struct Layer<F: PrimeField> {
     gates: Vec<Gate<F>>,
 }
 #[derive(Debug, Clone)]
+struct Gkrproof<F: PrimeField> {
+    output_mle: Vec<F>,
+    sumcheck_proof: Vec<(F, Vec<Vec<F>>)>,
+    w_s: Vec<(F, F)>,
+}
+#[derive(Debug, Clone)]
 struct Circuit<F: PrimeField> {
     layers: Vec<Layer<F>>,
 }
@@ -53,11 +59,6 @@ impl<F: PrimeField> Circuit<F> {
         }
         res
     }
-    //indices for this should be gotten from
-    fn init_add_i(indices: Vec<F>) {}
-    // fn mul_i(indices: Vec<F>, values: Vec<F>) -> F {
-
-    // }
     fn w_i(values: Vec<F>) -> EvaluationFormPolynomial<F> {
         let poly = EvaluationFormPolynomial::new(&values);
         poly
@@ -83,9 +84,6 @@ impl<F: PrimeField> Circuit<F> {
                 _ => continue,
             }
         }
-
-        // println!("add_i_vec: {:?}", add_i_vec);
-        // println!("mul_i_vec: {:?}", mul_i_vec);
         (
             add_i_vec.iter().map(|&x| F::from(x)).collect(),
             mul_i_vec.iter().map(|&x| F::from(x)).collect(),
@@ -93,62 +91,81 @@ impl<F: PrimeField> Circuit<F> {
     }
     fn get_ws(&self, layer: usize) -> Vec<F> {
         let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
-        let w: Vec<F> = layers[layer]
-            .gates
-            .iter()
-            .flat_map(|gate| vec![gate.left, gate.right])
-            .collect();
-        w
+        let mut w = vec![];
+        let x_s: Vec<F> = (0..=layer).map(|i| F::from(i as u64)).collect();
+        w.push(vec![layers[0].gates[0].output]);
+        for i in 0..layers.len() {
+            let w0 = layers[i]
+                .gates
+                .iter()
+                .flat_map(|gate| vec![gate.left, gate.right])
+                .collect::<Vec<F>>();
+            w.push(w0);
+        }
+        w[layer].clone()
     }
-
-    fn proof(&self) {
+    fn verifier(self, gkr_proof: Gkrproof<F>) {
         let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+
         let hash_function = Sha3_256::new();
         let mut fiat_shamir: FiatShamir<
             sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>,
             F,
         > = FiatShamir::new(hash_function);
-        let mut m_o = layers[0]
-            .gates
-            .iter()
-            .map(|gate| gate.output)
-            .collect::<Vec<F>>();
-        m_o.push(F::from(0));
-        let m_o_bytes: Vec<u8> = m_o
+        let output_mle = gkr_proof.output_mle;
+        let output_mle_bytes: Vec<u8> = output_mle
             .iter()
             .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
             .collect();
-
-        fiat_shamir.absorb(&m_o_bytes);
-
+        fiat_shamir.absorb(&output_mle_bytes);
         let r_1 = fiat_shamir.squeeze();
-        let init_claim = EvaluationFormPolynomial::new(&m_o)
+        let r_s = vec![r_1];
+
+
+
+
+        
+        let init_claim = EvaluationFormPolynomial::new(&output_mle)
             .partial_evaluate(r_1, 0)
             .representation[0];
         println!("init_claim {:?}", init_claim);
 
-        let mut init_f_bc: SumPolynomial<F> = self.generate_fbc(0, vec![r_1]);
-        let mut challenges_vec = vec![];
+        let (add_i, mul_i) = self.add_i_or_mul_i(0);
 
+        let mut new_add_poly = EvaluationFormPolynomial::new(&add_i);
+        let mut new_mul_poly = EvaluationFormPolynomial::new(&mul_i);
+
+        for i in 0..r_s.len() {
+            new_add_poly = new_add_poly.partial_evaluate(r_s[i], 0);
+
+            new_mul_poly = new_mul_poly.partial_evaluate(r_s[i], 0);
+        }
+
+        let mut init_f_bc: SumPolynomial<F> =
+            self.generate_fbc(0, new_add_poly.clone(), new_mul_poly.clone());
+
+        let ( claimed_sum,  _round_polys, mut random_challenges) =
+            sumcheck::proof(init_f_bc, init_claim);
+            assert_eq!(claimed_sum, init_claim);
+
+        let (mut r_b, mut r_c) = random_challenges.split_at(random_challenges.len() / 2);
         for i in 1..layers.len() {
-            let w = self.get_ws(i);
-            println!("w {:?}", w);
-
-            let (claimed_sum, random_challenges) = sumcheck::proof(init_f_bc, init_claim);
-            challenges_vec.extend(random_challenges.clone());
-
-            let (r_b, r_c) = random_challenges.split_at(random_challenges.len() / 2);
-
-            println!("r_b {:?}", r_b);
-            println!("r_c {:?}", r_c);
-
-            let w_i = EvaluationFormPolynomial::new(&w);
-
-            let mut rng = ark_std::rand::thread_rng();
-
-            let alpha = F::rand(&mut rng);
-            let beta = F::rand(&mut rng);
+            let (w_rb, w_rc) = gkr_proof.w_s[i-1];
+            let w_rb_poly = EvaluationFormPolynomial::new(&vec![w_rb]);
+            let w_rc_poly = EvaluationFormPolynomial::new(&vec![w_rc]);
+          
+            let w_rb_bytes : Vec<u8>  = w_rb_poly.representation.iter()
+            .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+            .collect();
+            let w_rc_bytes : Vec<u8>  = w_rc_poly.representation.iter()
+            .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+            .collect();
+            fiat_shamir.absorb(&w_rb_bytes);
+            let alpha = fiat_shamir.squeeze();
+            fiat_shamir.absorb(&w_rc_bytes);
+            let beta = fiat_shamir.squeeze();;
             let (alpha_add_i, alpha_mul_i) = self.add_i_or_mul_i(i);
+
             let mut alpha_add_i = EvaluationFormPolynomial::new(&alpha_add_i);
             let mut alpha_mul_i = EvaluationFormPolynomial::new(&alpha_mul_i);
 
@@ -169,6 +186,7 @@ impl<F: PrimeField> Circuit<F> {
             alpha_mul_i = EvaluationFormPolynomial::new(&alpha_mul_i.representation);
 
             let (beta_add_i, beta_mul_i) = self.add_i_or_mul_i(i);
+
             let mut beta_add_i = EvaluationFormPolynomial::new(&beta_add_i);
             let mut beta_mul_i = EvaluationFormPolynomial::new(&beta_mul_i);
 
@@ -188,58 +206,233 @@ impl<F: PrimeField> Circuit<F> {
                 .representation
                 .iter_mut()
                 .for_each(|coeff| *coeff *= beta);
+
             beta_mul_i = EvaluationFormPolynomial::new(&beta_mul_i.representation);
-            let new_mul = alpha_add_i.add(beta_add_i);
-            let new_add = alpha_mul_i.add(beta_mul_i);
-            // let new_add = ProductPolynomial::new(vec![alpha_add_i, beta_add_i]);
-            // let new_mul = ProductPolynomial::new(vec![alpha_mul_i, beta_mul_i]);
+            new_add_poly = alpha_add_i.add(beta_add_i);
+            new_mul_poly = alpha_mul_i.add(beta_mul_i);
+            let sum_check_res = &gkr_proof.sumcheck_proof[i];
 
-            let w_b = w_i.clone();
-            let w_c = w_i.clone();
-            let w_bc = ProductPolynomial::new(vec![w_b, w_c]);
-            let w_add_bc: EvaluationFormPolynomial<F> = w_bc.sum_poly();
-            let w_mul_bc: EvaluationFormPolynomial<F> = w_bc.mul_poly();
+            let x_s: Vec<F> = (0..=2).map(|i| F::from(i as u64)).collect();
+            let y_s = &sum_check_res.1;
 
-            init_f_bc = SumPolynomial::new(vec![
-                ProductPolynomial::new(vec![w_add_bc, new_add]),
-                ProductPolynomial::new(vec![w_mul_bc, new_mul]),
-            ]);
+            let uni_polynomial = UnivariatePolynomial::interpolate(x_s, y_s[0].clone());
+            let eval_at_0 = uni_polynomial.evaluate(F::zero());
+            let eval_at_1 = uni_polynomial.evaluate(F::one());
 
-            println!("random_challenges  {:?}", challenges_vec);
+            let verifier_sum = eval_at_0 + eval_at_1;
+          
+
+            init_f_bc = self.generate_fbc(i, new_add_poly.clone(), new_mul_poly.clone());
+          
+
+            let sumcheck_res = sumcheck::verify(init_f_bc, claimed_sum,y_s.to_vec());
+            random_challenges = sumcheck_res.1; 
+          
+
+            let res: (&[F], &[F]) = random_challenges.split_at(random_challenges.len() / 2);
+            r_b = res.0;
+            r_c = res.1;
+        
+
+            for i in 0..random_challenges.len() {
+                new_add_poly = new_add_poly.partial_evaluate(random_challenges[i], 0);
+
+                new_mul_poly = new_mul_poly.partial_evaluate(random_challenges[i], 0);
+            }
+            let claim = alpha * (w_rb) + beta * (w_rc);
+        
+            assert_eq!(verifier_sum, claim);
+
+            // let res = (new_add_poly_clone.representation[0] * (w_s.0 + w_s.1)) + (new_mul_poly.clone().representation[0] * (w_s.0 * w_s.1));
+
         }
-        println!("init_f_bc123456789 {:?}", init_f_bc);
-        for &value in &challenges_vec {
-            init_f_bc = init_f_bc.partial_evaluate(value, 0);
-       
+    }
+    fn proof(&self) -> Gkrproof<F> {
+        let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+            let alpha = F::zero();
+            let beta = F::zero();
+
+        let hash_function = Sha3_256::new();
+        let mut fiat_shamir: FiatShamir<
+            sha3::digest::core_api::CoreWrapper<sha3::Sha3_256Core>,
+            F,
+        > = FiatShamir::new(hash_function);
+        let mut output_mle = layers[0]
+            .gates
+            .iter()
+            .map(|gate| gate.output)
+            .collect::<Vec<F>>();
+        if output_mle.len() == 1 {
+            output_mle.push(F::from(0));
         }
-        init_f_bc = init_f_bc.reduce();
-             println!("init_f_bc {:?}", init_f_bc);
+
+        let output_mle_bytes: Vec<u8> = output_mle
+            .iter()
+            .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+            .collect();
+        fiat_shamir.absorb(&output_mle_bytes);
+
+        // TODO: r_1 should depend on the number of variables for the output polynomial
+        let r_1 = fiat_shamir.squeeze();
+        let r_s = vec![r_1];
+
+        let init_claim = EvaluationFormPolynomial::new(&output_mle)
+            .partial_evaluate(r_1, 0)
+            .representation[0];
+
+        let (add_i, mul_i) = self.add_i_or_mul_i(0);
+
+        let mut new_add_poly = EvaluationFormPolynomial::new(&add_i);
+        let mut new_mul_poly = EvaluationFormPolynomial::new(&mul_i);
+
+        for i in 0..r_s.len() {
+            new_add_poly = new_add_poly.partial_evaluate(r_s[i], 0);
+
+            new_mul_poly = new_mul_poly.partial_evaluate(r_s[i], 0);
+        }
+        let mut init_f_bc: SumPolynomial<F> =
+            self.generate_fbc(0, new_add_poly.clone(), new_mul_poly.clone());
+
+        let mut challenges_vec = vec![];
+        let mut claimed_sum_vec = vec![];
+        let (mut claimed_sum, mut round_polys, mut random_challenges) =
+            sumcheck::proof(init_f_bc, init_claim);
+
+        claimed_sum_vec.push(claimed_sum);
+
+        let (mut r_b, mut r_c) = random_challenges.split_at(random_challenges.len() / 2);
+
+        let mut w = self.get_ws(1);
+        let mut w_i = EvaluationFormPolynomial::new(&w);
+        let mut w_rb = w_i.clone();
+        let mut w_rc = w_i.clone();
+
+        for i in 0..r_b.len() {
+            w_rb = w_rb.partial_evaluate(r_b[i], 0);
+            w_rc = w_rc.partial_evaluate(r_c[i], 0);
+        }
+
+        let mut gkr_proof = Gkrproof {
+            output_mle,
+            sumcheck_proof: vec![(claimed_sum, round_polys)],
+            w_s: vec![(w_rb.representation[0], w_rc.representation[0])],
+        };
+
+        challenges_vec.push(random_challenges.clone());
+        for i in 1..layers.len() {
+            w = self.get_ws(i + 1);
+     
+            w_i = EvaluationFormPolynomial::new(&w);
+            
+            let w_rb_bytes : Vec<u8>  = w_rb.representation.iter()
+            .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+            .collect();
+            let w_rc_bytes : Vec<u8>  = w_rc.representation.iter()
+            .flat_map(|f| f.into_bigint().to_bits_be().into_iter().map(|b| b as u8))
+            .collect();
+            fiat_shamir.absorb(&w_rb_bytes);
+            let alpha = fiat_shamir.squeeze();
+            fiat_shamir.absorb(&w_rc_bytes);
+            let beta = fiat_shamir.squeeze();;
+            let (alpha_add_i, alpha_mul_i) = self.add_i_or_mul_i(i);
+
+            let mut alpha_add_i = EvaluationFormPolynomial::new(&alpha_add_i);
+            let mut alpha_mul_i = EvaluationFormPolynomial::new(&alpha_mul_i);
+
+            for &r_b_value in r_b {
+                alpha_add_i = alpha_add_i.partial_evaluate(r_b_value, 0);
+                alpha_mul_i = alpha_mul_i.partial_evaluate(r_b_value, 0);
+            }
+
+            alpha_add_i
+                .representation
+                .iter_mut()
+                .for_each(|coeff| *coeff *= alpha);
+            alpha_add_i = EvaluationFormPolynomial::new(&alpha_add_i.representation);
+            alpha_mul_i
+                .representation
+                .iter_mut()
+                .for_each(|coeff: &mut F| *coeff *= alpha);
+            alpha_mul_i = EvaluationFormPolynomial::new(&alpha_mul_i.representation);
+
+            let (beta_add_i, beta_mul_i) = self.add_i_or_mul_i(i);
+
+            let mut beta_add_i = EvaluationFormPolynomial::new(&beta_add_i);
+            let mut beta_mul_i = EvaluationFormPolynomial::new(&beta_mul_i);
+
+            for &r_c_value in r_c {
+                beta_add_i = beta_add_i.partial_evaluate(r_c_value, 0);
+                beta_mul_i = beta_mul_i.partial_evaluate(r_c_value, 0);
+            }
+
+            beta_add_i
+                .representation
+                .iter_mut()
+                .for_each(|coeff| *coeff *= beta);
+
+            beta_add_i = EvaluationFormPolynomial::new(&beta_add_i.representation);
+
+            beta_mul_i
+                .representation
+                .iter_mut()
+                .for_each(|coeff| *coeff *= beta);
+
+            beta_mul_i = EvaluationFormPolynomial::new(&beta_mul_i.representation);
+            new_add_poly = alpha_add_i.add(beta_add_i);
+            new_mul_poly = alpha_mul_i.add(beta_mul_i);
+
+            init_f_bc = self.generate_fbc(i, new_add_poly, new_mul_poly);
+            
+
+            w_rb = w_i.clone();
+            w_rc = w_i.clone();
+
+            let sumcheck_res = sumcheck::proof(init_f_bc, init_claim);
+            random_challenges = sumcheck_res.2;
+            round_polys = sumcheck_res.1;
+            claimed_sum = sumcheck_res.0;
+            claimed_sum_vec.push(claimed_sum);
+
+            let res: (&[F], &[F]) = random_challenges.split_at(random_challenges.len() / 2);
+            r_b = res.0;
+            r_c = res.1;
+            for i in 0..r_b.len() {
+                w_rb = w_rb.partial_evaluate(r_b[i], 0);
+                w_rc = w_rc.partial_evaluate(r_c[i], 0);
+            }
+
+            challenges_vec.push(random_challenges.clone());
+
+            gkr_proof.sumcheck_proof.push((claimed_sum, round_polys));
+            gkr_proof
+                .w_s
+                .push((w_rb.representation[0], w_rc.representation[0]));
+        }
+        // println!("gkr_proof {:?}", gkr_proof);
+        gkr_proof
     }
 
-    fn generate_fbc(&self, layer: usize, r_s: Vec<F>) -> SumPolynomial<F> {
-        let layers: Vec<Layer<F>> = self.layers.iter().rev().cloned().collect();
+    fn generate_fbc(
+        &self,
+        layer: usize,
+        add_i_poly: EvaluationFormPolynomial<F>,
+        mul_i_poly: EvaluationFormPolynomial<F>,
+    ) -> SumPolynomial<F> {
+        let w = self.get_ws(layer + 1);
 
-        let (add_i, mul_i) = self.add_i_or_mul_i(layer);
-        let mut add_i_poly = EvaluationFormPolynomial::new(&add_i);
-        let mut mul_i_poly = EvaluationFormPolynomial::new(&mul_i);
-
-        let w = self.get_ws(layer);
         let w_i = EvaluationFormPolynomial::new(&w);
 
         let w_bc = ProductPolynomial::new(vec![w_i.clone(), w_i.clone()]);
 
         let w_add_bc: EvaluationFormPolynomial<F> = w_bc.sum_poly();
+
         let w_mul_bc: EvaluationFormPolynomial<F> = w_bc.mul_poly();
 
-        for i in 0..r_s.len() {
-            add_i_poly = add_i_poly.partial_evaluate(r_s[i], 0);
-
-            mul_i_poly = mul_i_poly.partial_evaluate(r_s[i], 0);
-        }
         let fbc = SumPolynomial::new(vec![
             ProductPolynomial::new(vec![w_add_bc, add_i_poly]),
             ProductPolynomial::new(vec![w_mul_bc, mul_i_poly]),
         ]);
+
         fbc
     }
 
@@ -250,7 +443,6 @@ impl<F: PrimeField> Circuit<F> {
         let output_binary: Vec<String> = (0..outputs.len())
             .map(|i| format!("{:0width$b}", i, width = layer))
             .collect();
-        println!("output_binary{:?}", output_binary);
 
         let left_right: Vec<F> = layers[layer]
             .gates
@@ -260,7 +452,7 @@ impl<F: PrimeField> Circuit<F> {
         let left_right_binary: Vec<String> = (0..left_right.len())
             .map(|i| format!("{:0width$b}", i, width = layer + 1))
             .collect();
-        println!("left_right_binary{:?}", left_right_binary);
+
         let gate_indices: Vec<String> = output_binary
             .iter()
             .enumerate()
@@ -273,7 +465,6 @@ impl<F: PrimeField> Circuit<F> {
                 .join("")
             })
             .collect();
-        println!("gate_indices{:?}", gate_indices);
 
         gate_indices
     }
@@ -287,16 +478,17 @@ impl<F: PrimeField> Layer<F> {
         self.gates.push(gate);
     }
     fn evaluate_layer(&mut self, ops: Vec<Op>) -> Vec<F> {
-        let mut output = vec![];
+        let output: Vec<F> = self.gates.iter().map(|gate| gate.output).collect();
 
-        output = self.gates.iter().map(|out| out.output).collect();
-        // println!("output{:?}", output);
         self.gates.drain(..);
-        for i in 0..ops.len() {
-            let new_gate = Gate::new(output[i], output[i + 1], ops[i]);
 
-            self.gates.push(new_gate);
+        for i in 0..ops.len() {
+            if i * 2 + 1 < output.len() {
+                let new_gate = Gate::new(output[i * 2], output[i * 2 + 1], ops[i]);
+                self.gates.push(new_gate);
+            }
         }
+
         output
     }
 }
@@ -356,8 +548,9 @@ mod tests {
         let v = circuit.layers[0].clone();
 
         circuit.add_i_or_mul_i(0);
-        circuit.generate_fbc(1, vec![Fq::from(2), Fq::from(5)]);
-        circuit.proof();
+        // circuit.generate_fbc(1, vec![Fq::from(2), Fq::from(5)]);
+        let gkr_proof = circuit.proof();
+        circuit.verifier(gkr_proof);
     }
     #[test]
     fn test_gate() {
@@ -399,9 +592,9 @@ mod tests {
         let layer2_output = layer.evaluate_layer(vec![Op::Add]);
         circuit.add_layer((layer.clone()));
 
-        println!(" circuit{:?}", circuit);
+        // println!(" circuit{:?}", circuit);
         let v = circuit.layers[0].clone();
-        println!("v {:?}", v);
+        // println!("v {:?}", v);
         circuit.generate_gate_indices_for_layer_i(1);
     }
     #[test]
@@ -409,6 +602,6 @@ mod tests {
         let indices = vec![Fq::from(0), Fq::from(0), Fq::from(1)];
         let values = vec![Fq::from(4), Fq::from(2), Fq::from(3)];
         let res = Circuit::add_i(indices, values);
-        println!("res {:?}", res)
+        // println!("res {:?}", res)
     }
 }
