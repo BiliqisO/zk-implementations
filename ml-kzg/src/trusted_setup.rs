@@ -1,21 +1,16 @@
-use ark_bn254::g2;
+// File: trusted_setup.rs
 use ark_ff::PrimeField;
-use ark_ec::pairing::{self, Pairing};
+use ark_ec::pairing::Pairing;
 use ark_ec::PrimeGroup;
-use multilinear_polynomial::{boolean_hypercube::boolean_hypercube};
-use std::marker::PhantomData;
+use multilinear_polynomial::boolean_hypercube::boolean_hypercube;
 
-fn main() {
-    println!("Hello, world!");
-}
-
-struct Tau<P: Pairing> {  
-    lagrange_basis: Vec<P::G1>,
-    g2_tau:Vec<P::G2>,  
+ pub struct Tau<P: Pairing> {  
+    pub lagrange_basis: Vec<P::G1>,
+    pub g2_tau:Vec<P::G2>,  
 
 }
 impl<P:Pairing> Tau<P> {
-    fn initialise<F: PrimeField>(taus:Vec<F>)->Self{
+    pub fn initialise<F: PrimeField>(taus:Vec<F>)->Self{
         let generator1 =P::G1::generator();
         let generator2 =P::G2::generator();
 
@@ -37,21 +32,20 @@ impl<P:Pairing> Tau<P> {
         let mut g2_tau = Vec::new();
         g2_tau = taus.iter().map(|i| generator2.mul_bigint(i.into_bigint())).collect::<Vec<_>>();
      
-        println!("lagrange_basis {:?}", lagrange_basis);
-        println!("g2_tau {:?}", g2_tau);
+        // println!("lagrange_basis {:?}", lagrange_basis);
+        // println!("g2_tau {:?}", g2_tau);
         Tau { lagrange_basis, g2_tau}
        
-    }
+    } 
 }
 #[cfg(test)]
-mod tests {
+mod tests { 
     use super::*;
     use ark_bn254::Fq;
     #[test]
         fn test_initialise(){  
         let taus = vec![Fq::from(45u64), Fq::from(2u64), Fq::from(3u64)];
         Tau::< ark_bn254::Bn254>::initialise(taus);        
-
         }
  
 
